@@ -209,3 +209,49 @@ func TestFetchSlotBookedUsers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, usernames, 2)
 }
+
+func TestFetchBookingBySlotAndUserId(t *testing.T) {
+	// Initialize sqlmock and return db and mock
+	db, mock := setup()
+	defer db.Close()
+
+	// Create the real BookingRepo
+	repo := repositories.NewBookingRepo(db)
+
+	// Test data
+	userID := uuid.New()
+	slotID := uuid.New()
+	bookingID := uuid.New()
+	gameName := "Table Tennis"
+	date := time.Now().Truncate(24 * time.Hour)
+	startTime := date.Add(1 * time.Hour)
+	endTime := date.Add(1*time.Hour + 20*time.Minute)
+
+	// Mock the query to fetch booking for the user and slot
+	bookingRows := sqlmock.NewRows([]string{"booking_id", "game_name", "slot_date", "start_time", "end_time"}).
+		AddRow(bookingID, gameName, date, startTime, endTime)
+
+	mock.ExpectQuery("SELECT (.+) FROM bookings b JOIN slots s ON b.slot_id = s.slot_id JOIN games g ON s.game_id = g.game_id").
+		WithArgs(slotID, userID).
+		WillReturnRows(bookingRows)
+
+	// Mock the query to fetch booked users for the given slot_id
+	userRows := sqlmock.NewRows([]string{"username"}).
+		AddRow("john_doe").
+		AddRow("jane_smith")
+
+	mock.ExpectQuery(`SELECT u.username FROM bookings b INNER JOIN users u ON b.user_id = u.user_id WHERE b.slot_id = \$1`).
+		WithArgs(slotID).
+		WillReturnRows(userRows)
+
+	// Call the method under test
+	booking, err := repo.FetchBookingBySlotAndUserId(context.TODO(), slotID, userID)
+
+	// Assertions
+	assert.NoError(t, err)
+	assert.Equal(t, bookingID, booking.BookingId)
+	assert.Equal(t, gameName, booking.GameName)
+	assert.Equal(t, startTime, booking.StartTime)
+	assert.Equal(t, endTime, booking.EndTime)
+	//assert.Equal(t, []string{"john_doe", "jane_smith"}, booking.BookedUsers)
+}

@@ -103,6 +103,7 @@ func (r *invitationRepo) FetchUserInvitations(ctx context.Context, userID uuid.U
 	return invitations, nil
 }
 
+// FetchUserPendingInvitations retrieves all the pending invitations of the user
 func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error) {
 	query := `
 		SELECT
@@ -168,6 +169,7 @@ func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID
 	return invitations, nil
 }
 
+// FetchInvitationByUserAndSlot retrieves an invitation based on user and slot id
 func (r *invitationRepo) FetchInvitationByUserAndSlot(ctx context.Context, invitingUserID uuid.UUID, invitedUserID uuid.UUID, slotID uuid.UUID) (*entities.Invitation, error) {
 	query := `
 		SELECT invitation_id, inviting_user_id, invited_user_id, slot_id

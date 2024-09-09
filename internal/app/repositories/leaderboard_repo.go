@@ -19,6 +19,8 @@ func NewLeaderboardRepo(db *sql.DB) interfaces.LeaderboardRepository {
 	return &leaderboardRepo{db: db}
 }
 
+// FetchGameLeaderboard fetches the game leaderboard of a particular game
+// It returns the list based on descending order of score
 func (r *leaderboardRepo) FetchGameLeaderboard(ctx context.Context, gameID uuid.UUID) ([]models.Leaderboard, error) {
 	query := `
 		SELECT u.username, l.score

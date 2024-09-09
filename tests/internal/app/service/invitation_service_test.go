@@ -38,9 +38,26 @@ func TestInvitationService_MakeInvitation(t *testing.T) {
 			expectedError:  false,
 		},
 		{
+			name: "error fetching invitation by user and slot",
+			mockSetup: func() {
+				mockInvitationRepo.EXPECT().FetchInvitationByUserAndSlot(ctx, invitingUserID, invitedUserID, slotID).Return(nil, errors.New("error")).Times(1)
+			},
+			expectedResult: uuid.Nil,
+			expectedError:  true,
+		},
+		{
 			name: "invitation already exists",
 			mockSetup: func() {
 				mockInvitationRepo.EXPECT().FetchInvitationByUserAndSlot(ctx, invitingUserID, invitedUserID, slotID).Return(&entities.Invitation{}, nil)
+			},
+			expectedResult: uuid.Nil,
+			expectedError:  true,
+		},
+		{
+			name: "error fetching slot by id",
+			mockSetup: func() {
+				mockInvitationRepo.EXPECT().FetchInvitationByUserAndSlot(ctx, invitingUserID, invitedUserID, slotID).Return(nil, nil).Times(1)
+				mockSlotService.EXPECT().GetSlotByID(ctx, slotID).Return(nil, errors.New("error")).Times(1)
 			},
 			expectedResult: uuid.Nil,
 			expectedError:  true,

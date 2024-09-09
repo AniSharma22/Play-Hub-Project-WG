@@ -3,10 +3,8 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"github.com/joho/godotenv"
 	"log"
-	"os"
-	"strconv"
+	"project2/internal/config"
 	"sync"
 	"time"
 
@@ -29,22 +27,16 @@ type DBConfig struct {
 
 // LoadDBConfig loads database configuration from .env file
 func LoadDBConfig() (*DBConfig, error) {
-	err := godotenv.Load()
-	if err != nil {
-		return nil, fmt.Errorf("error loading .env file: %w", err)
-	}
-
-	port, err := strconv.Atoi(os.Getenv("DB_PORT"))
-	if err != nil {
-		return nil, fmt.Errorf("invalid DB_PORT: %w", err)
+	if config.Host == "" || config.User == "" || config.Password == "" || config.Dbname == "" {
+		return nil, fmt.Errorf("missing database configuration")
 	}
 
 	return &DBConfig{
-		Host:     os.Getenv("DB_HOST"),
-		Port:     port,
-		User:     os.Getenv("DB_USER"),
-		Password: os.Getenv("DB_PASSWORD"),
-		DBName:   os.Getenv("DB_NAME"),
+		Host:     config.Host,
+		Port:     config.Port,
+		User:     config.User,
+		Password: config.Password,
+		DBName:   config.Dbname,
 	}, nil
 }
 
@@ -52,20 +44,21 @@ func LoadDBConfig() (*DBConfig, error) {
 func InitClient() (*sql.DB, error) {
 	var err error
 
-	// Ensure that only one instance of the database is created
 	once.Do(func() {
-		var config *DBConfig
-		config, err = LoadDBConfig()
+		var cfg *DBConfig
+		cfg, err = LoadDBConfig()
 		if err != nil {
+			err = fmt.Errorf("failed to load DB config: %v", err)
 			return
 		}
 
 		psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-			config.Host, config.Port, config.User, config.Password, config.DBName)
+			cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName)
 
 		dbInstance, err = sql.Open("postgres", psqlInfo)
 		if err != nil {
-			log.Fatalf("Failed to connect to PostgreSQL: %v", err)
+			err = fmt.Errorf("failed to open PostgreSQL connection: %v", err)
+			return
 		}
 
 		// Set connection pool limits
@@ -76,9 +69,13 @@ func InitClient() (*sql.DB, error) {
 		// Check the connection
 		err = dbInstance.Ping()
 		if err != nil {
-			log.Fatalf("Failed to ping PostgreSQL: %v", err)
+			err = fmt.Errorf("failed to ping PostgreSQL: %v", err)
+			return
 		}
+
+		log.Println("Successfully connected to PostgresSQL")
 	})
 
+	// Return dbInstance and any error that occurred during initialization
 	return dbInstance, err
 }

@@ -146,7 +146,8 @@ func TestGameRepo_DeleteGame(t *testing.T) {
 		WithArgs(gameID).
 		WillReturnResult(sqlmock.NewResult(1, 0))
 
-	err = repo.DeleteGame(ctx, gameID)
+	mock.
+		err = repo.DeleteGame(ctx, gameID)
 	assert.Error(t, err)
 	assert.Equal(t, fmt.Errorf("no game found with ID %s", gameID), err)
 	assert.NoError(t, mock.ExpectationsWereMet())

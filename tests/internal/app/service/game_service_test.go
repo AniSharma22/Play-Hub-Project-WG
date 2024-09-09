@@ -7,6 +7,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"project2/internal/domain/entities"
 	"testing"
 )
@@ -18,15 +19,29 @@ func TestGameService_GetGameByID(t *testing.T) {
 	gameID := uuid.New()
 	expectedGame := &entities.Game{GameID: gameID}
 
-	mockGameRepo.EXPECT().
-		FetchGameByID(gomock.Any(), gameID).
-		Return(expectedGame, nil).
-		Times(1)
+	t.Run("Successful retrieval of game", func(t *testing.T) {
+		mockGameRepo.EXPECT().
+			FetchGameByID(gomock.Any(), gameID).
+			Return(expectedGame, nil).
+			Times(1)
 
-	game, err := gameService.GetGameByID(context.Background(), gameID)
+		game, err := gameService.GetGameByID(context.Background(), gameID)
 
-	assert.NoError(t, err)
-	assert.Equal(t, expectedGame, game)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedGame, game)
+	})
+
+	t.Run("Error fetching game", func(t *testing.T) {
+		mockGameRepo.EXPECT().
+			FetchGameByID(gomock.Any(), gameID).
+			Return(nil, errors.New("error")).
+			Times(1)
+
+		game, err := gameService.GetGameByID(context.Background(), gameID)
+		assert.Nil(t, game)
+		assert.Error(t, err)
+	})
+
 }
 
 func TestGameService_GetAllGames(t *testing.T) {
@@ -38,15 +53,28 @@ func TestGameService_GetAllGames(t *testing.T) {
 		{GameID: uuid.New()},
 	}
 
-	mockGameRepo.EXPECT().
-		FetchAllGames(gomock.Any()).
-		Return(expectedGames, nil).
-		Times(1)
+	t.Run("Successful retrieval of games", func(t *testing.T) {
+		mockGameRepo.EXPECT().
+			FetchAllGames(gomock.Any()).
+			Return(expectedGames, nil).
+			Times(1)
 
-	games, err := gameService.GetAllGames(context.Background())
+		games, err := gameService.GetAllGames(context.Background())
 
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, expectedGames, games)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, expectedGames, games)
+	})
+
+	t.Run("Error fetching games", func(t *testing.T) {
+		mockGameRepo.EXPECT().
+			FetchAllGames(gomock.Any()).
+			Return(nil, errors.New("error")).
+			Times(1)
+
+		games, err := gameService.GetAllGames(context.Background())
+		assert.Nil(t, games)
+		assert.Error(t, err)
+	})
 }
 
 func TestGameService_DeleteGame(t *testing.T) {
@@ -55,14 +83,26 @@ func TestGameService_DeleteGame(t *testing.T) {
 
 	gameID := uuid.New()
 
-	mockGameRepo.EXPECT().
-		DeleteGame(gomock.Any(), gameID).
-		Return(nil).
-		Times(1)
+	t.Run("Successful deletion of game", func(t *testing.T) {
+		mockGameRepo.EXPECT().
+			DeleteGame(gomock.Any(), gameID).
+			Return(nil).
+			Times(1)
 
-	err := gameService.DeleteGame(context.Background(), gameID)
+		err := gameService.DeleteGame(context.Background(), gameID)
 
-	assert.NoError(t, err)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error deleting game", func(t *testing.T) {
+		mockGameRepo.EXPECT().
+			DeleteGame(gomock.Any(), gameID).
+			Return(errors.New("error")).
+			Times(1)
+
+		err := gameService.DeleteGame(context.Background(), gameID)
+		assert.Error(t, err)
+	})
 }
 
 func TestGameService_CreateGame(t *testing.T) {
@@ -114,16 +154,19 @@ func TestGameService_CreateGame(t *testing.T) {
 	}
 }
 
-func TestGameService_UpdateGameStatus(t *testing.T) {
+func TestUpdateGameStatus(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	tests := []struct {
 		name          string
 		gameID        uuid.UUID
 		status        bool
 		mockSetup     func()
-		expectedError error
+		expectedError string
 	}{
 		{
-			name:   "Success",
+			name:   "Successful Update",
 			gameID: uuid.New(),
 			status: true,
 			mockSetup: func() {
@@ -131,15 +174,28 @@ func TestGameService_UpdateGameStatus(t *testing.T) {
 					FetchGameByID(gomock.Any(), gomock.Any()).
 					Return(&entities.Game{GameID: uuid.New()}, nil).
 					Times(1)
+
 				mockGameRepo.EXPECT().
 					UpdateGameStatus(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).
 					Times(1)
 			},
-			expectedError: nil,
+			expectedError: "",
 		},
 		{
-			name:   "GameNotFound",
+			name:   "Failed to Fetch Game by ID",
+			gameID: uuid.New(),
+			status: true,
+			mockSetup: func() {
+				mockGameRepo.EXPECT().
+					FetchGameByID(gomock.Any(), gomock.Any()).
+					Return(nil, errors.New("db error")).
+					Times(1)
+			},
+			expectedError: "failed to fetch game by ID: db error",
+		},
+		{
+			name:   "Game Not Found",
 			gameID: uuid.New(),
 			status: true,
 			mockSetup: func() {
@@ -148,20 +204,39 @@ func TestGameService_UpdateGameStatus(t *testing.T) {
 					Return(nil, nil).
 					Times(1)
 			},
-			expectedError: errors.New("game not found"),
+			expectedError: "game not found",
+		},
+		{
+			name:   "Failed to Update Game Status",
+			gameID: uuid.New(),
+			status: true,
+			mockSetup: func() {
+				mockGameRepo.EXPECT().
+					FetchGameByID(gomock.Any(), gomock.Any()).
+					Return(&entities.Game{GameID: uuid.New()}, nil).
+					Times(1)
+
+				mockGameRepo.EXPECT().
+					UpdateGameStatus(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(errors.New("update error")).
+					Times(1)
+			},
+			expectedError: "failed to update game status: update error",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			teardown := setup(t)
-			defer teardown()
-
 			tt.mockSetup()
 
 			err := gameService.UpdateGameStatus(context.Background(), tt.gameID, tt.status)
 
-			assert.Equal(t, tt.expectedError, err)
+			if tt.expectedError != "" {
+				require.Error(t, err)
+				assert.Equal(t, tt.expectedError, err.Error())
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

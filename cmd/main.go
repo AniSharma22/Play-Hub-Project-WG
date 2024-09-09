@@ -60,6 +60,7 @@ func main() {
 		<-sigChan
 		fmt.Println("Graceful shutdown initiated...")
 		// Additional cleanup if necessary
+		client.Close()
 		fmt.Println("All operations completed. Exiting.")
 		os.Exit(0)
 	}()
