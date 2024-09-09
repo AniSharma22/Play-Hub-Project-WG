@@ -1,6 +1,6 @@
 package config
 
-const (
+var (
 	Host     = "localhost"
 	Port     = 5432
 	User     = "postgres"

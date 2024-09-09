@@ -41,10 +41,13 @@ func LoadDBConfig() (*DBConfig, error) {
 }
 
 // InitClient initializes a PostgresSQL client as a singleton with a connection pool
+// If a dbConn argument is provided, it will be used; otherwise, a new connection will be established.
 func InitClient() (*sql.DB, error) {
 	var err error
 
 	once.Do(func() {
+
+		// Load configuration
 		var cfg *DBConfig
 		cfg, err = LoadDBConfig()
 		if err != nil {
@@ -52,9 +55,11 @@ func InitClient() (*sql.DB, error) {
 			return
 		}
 
+		// Build connection string
 		psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 			cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName)
 
+		// Open connection to Postgres
 		dbInstance, err = sql.Open("postgres", psqlInfo)
 		if err != nil {
 			err = fmt.Errorf("failed to open PostgreSQL connection: %v", err)
