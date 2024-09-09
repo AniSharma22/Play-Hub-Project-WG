@@ -22,7 +22,6 @@ func (ui *UI) ViewUpcomingBookings() {
 	}
 
 	for i, booking := range bookings {
-		//game, _ := ui.gameService.GetGameByID(slot.GameID)
 
 		fmt.Printf("Booking #%d\n", i+1)
 		fmt.Printf("Game:         %s\n", booking.GameName)
