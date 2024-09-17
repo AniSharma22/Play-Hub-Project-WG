@@ -14,6 +14,7 @@ import (
 var (
 	dbInstance *sql.DB
 	once       sync.Once
+	CreateConn = sql.Open
 )
 
 // DBConfig holds the database configuration
@@ -41,12 +42,10 @@ func LoadDBConfig() (*DBConfig, error) {
 }
 
 // InitClient initializes a PostgresSQL client as a singleton with a connection pool
-// If a dbConn argument is provided, it will be used; otherwise, a new connection will be established.
-func InitClient() (*sql.DB, error) {
+func PostgresInitClient() (*sql.DB, error) {
 	var err error
 
 	once.Do(func() {
-
 		// Load configuration
 		var cfg *DBConfig
 		cfg, err = LoadDBConfig()
@@ -60,7 +59,7 @@ func InitClient() (*sql.DB, error) {
 			cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName)
 
 		// Open connection to Postgres
-		dbInstance, err = sql.Open("postgres", psqlInfo)
+		dbInstance, err = CreateConn("postgres", psqlInfo)
 		if err != nil {
 			err = fmt.Errorf("failed to open PostgreSQL connection: %v", err)
 			return
@@ -71,7 +70,7 @@ func InitClient() (*sql.DB, error) {
 		dbInstance.SetMaxIdleConns(50)                 // Maximum number of idle connections in the pool
 		dbInstance.SetConnMaxLifetime(5 * time.Minute) // Connections will close and get replaced after 5 minutes
 
-		// Check the connection
+		//Check the connection
 		err = dbInstance.Ping()
 		if err != nil {
 			err = fmt.Errorf("failed to ping PostgreSQL: %v", err)

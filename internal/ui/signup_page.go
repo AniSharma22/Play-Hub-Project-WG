@@ -85,7 +85,7 @@ func (ui *UI) ShowSignupPage() {
 		}
 	}
 
-	// Create the user entity
+	// Create a user entity
 	user := entities.User{
 		Email:        email,
 		Password:     password,
@@ -97,8 +97,7 @@ func (ui *UI) ShowSignupPage() {
 	if err := ui.userService.Signup(context.Background(), &user); err != nil {
 		fmt.Println(err)
 		return
-	}
-
+	} // Redirect to User dashboard
 	fmt.Println("Signup successful!")
 	ui.ShowUserDashboard()
 }

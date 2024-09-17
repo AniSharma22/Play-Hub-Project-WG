@@ -1,0 +1,460 @@
+openapi: 3.0.0
+info:
+  version: "1.0.0"
+  title: Game Room Management API
+  description: REST API for managing users, games, slots, bookings, leaderboard, invitations, and notifications.
+
+servers:
+  - url: http://localhost:8080/api
+
+tags:
+  - name: "User"
+    description: "Operations related to users"
+  - name: "Game"
+    description: "Operations related to games"
+  - name: "Slot"
+    description: "Operations related to game slots"
+  - name: "Booking"
+    description: "Operations related to game bookings"
+  - name: "Leaderboard"
+    description: "Operations related to leaderboards"
+  - name: "Invitation"
+    description: "Operations related to invitations"
+  - name: "Notification"
+    description: "Operations related to notifications"
+
+paths:
+  /admin/login:
+    post:
+      summary: "Admin Login"
+      tags:
+        - "User"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: "Login Successful"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+                    description: "JWT token for authenticated admin"
+
+        "401":
+          description: "Unauthorized"
+
+  /signup:
+    post:
+      summary: "User Signup"
+      tags:
+        - "User"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                phoneNo:
+                  type: string
+                gender:
+                  type : string
+      responses:
+        "201":
+          description: "User Created"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+                    description: "JWT token for authenticated admin"
+
+        "400":
+          description: "Bad Request"
+
+  /users/login:
+    post:
+      summary: "User Login"
+      tags:
+        - "User"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: "Login Successful"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+                    description: "JWT token for authenticated admin"
+
+
+        "401":
+          description: "Unauthorized"
+  /logout:
+    post:
+      summary: "User Logout"
+      tags:
+        - "User"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: "Login Successful"
+        "401":
+          description: "Unauthorized"
+
+  /users/me:
+    get:
+      summary: "Get Your profile"
+      tags:
+        - "User"
+      responses:
+        "200":
+          description: "User Details"
+        "404":
+          description: "User Not Found"
+  /users:
+    get:
+      summary: "Get All Users"
+      tags:
+        - "User"
+      responses:
+        "200":
+          description: "User Details"
+        "404":
+          description: "User Not Found"
+
+  /users/{userID}:
+    get:
+      summary: "Get A Specific user"
+      tags:
+        - "User"
+      parameters:
+        - name: userID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "User Details"
+        "404":
+          description: "User Not Found"
+
+  /games:
+    get:
+      summary: "Get All Games"
+      tags:
+        - "Game"
+      responses:
+        "200":
+          description: "List of Games"
+        "404":
+          description: "No Games Found"
+
+    post:
+      summary: "Create a Game"
+      tags:
+        - "Game"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                maxPlayers:
+                  type: integer
+                minPlayers:
+                  type: integer
+                instances:
+                  type: integer
+
+      responses:
+        "201":
+          description: "Game Created"
+        "400":
+          description: "Bad Request"
+
+  /games/{id}:
+    get:
+      summary: "Get Game by ID"
+      tags:
+        - "Game"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Game Details"
+        "404":
+          description: "Game Not Found"
+
+    put:
+      summary: "Update Game Status"
+      tags:
+        - "Game"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                maxPlayers:
+                  type: integer
+                minPlayers:
+                  type: integer
+                instances:
+                  type: integer
+                isActive:
+                  type: boolean
+      responses:
+        "200":
+          description: "Game Updated"
+        "404":
+          description: "Game Not Found"
+
+    delete:
+      summary: "Delete a Game"
+      tags:
+        - "Game"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: "Game Deleted"
+        "404":
+          description: "Game Not Found"
+
+  /slots/games/{gameID}:
+    get:
+      summary: "Get Today's Slots for Game"
+      tags:
+        - "Slot"
+      parameters:
+        - name: gameID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "List of Slots"
+        "404":
+          description: "Slots Not Found"
+
+  /slots/{id}:
+    get:
+      summary: "Get Slot by ID"
+      tags:
+        - "Slot"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Slot Details"
+        "404":
+          description: "Slot Not Found"
+
+    # patch:
+    #   summary: "Mark slot as booked"
+    #   tags:
+    #     - "Slot"
+    #   parameters:
+    #     - name: id
+    #       in: path
+    #       required: true
+    #       schema:
+    #         type: string
+    #   responses:
+    #     "200":
+    #       description: "Slot Booked"
+    #     "404":
+    #       description: "Slot Not Found"
+
+  /bookings:
+    post:
+      summary: "Make a Booking"
+      tags:
+        - "Booking"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slotID:
+                  type: string
+      responses:
+        "201":
+          description: "Booking Created"
+        "400":
+          description: "Bad Request"
+        "500":
+          description: "Server Error"
+
+  /bookings/user/{userID}/upcoming:
+    get:
+      summary: "Get User's Upcoming Bookings"
+      tags:
+        - "Booking"
+      parameters:
+        - name: userID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "List of Bookings"
+        "500":
+          description: "Server Error"
+
+  /leaderboards/games/{gameID}:
+    get:
+      summary: "Get Game Leaderboard"
+      tags:
+        - "Leaderboard"
+      parameters:
+        - name: gameID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Leaderboard Details"
+        "500":
+          description: "Server Error"
+
+  /invitations:
+    post:
+      summary: "Create an Invitation"
+      tags:
+        - "Invitation"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invitedUserEmail:
+                  type: string
+                slotID:
+                  type: string
+      responses:
+        "201":
+          description: "Invitation Created"
+        "400":
+          description: "Bad Request"
+
+  /invitations/{id}:
+    patch:
+      summary: "Update Invitation Status"
+      tags:
+        - "Invitation"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: "ID of the invitation to update"
+        - in: query
+          name: action
+          required: true
+          schema:
+            type: string
+            enum: [accept, reject]
+          description: "Status to update the invitation with (accept or reject)"
+      responses:
+        "200":
+          description: "Invitation Updated Successfully"
+        "400":
+          description: "Invalid Status Value"
+        "404":
+          description: "Invitation Not Found"
+        "500":
+          description: "Server Error"
+
+
+  /notifications:
+    get:
+      summary: "Get User Notifications"
+      tags:
+        - "Notification"
+      responses:
+        "200":
+          description: "List of Notifications"
+        "500":
+          description: "Server Error"

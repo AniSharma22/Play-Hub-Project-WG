@@ -51,7 +51,7 @@ func (ui *UI) ShowGameRoom() {
 		}
 	}
 
-	// Handle the user's choice
+	// Handle the user's choice (go back)
 	if choice == len(games)+1 {
 		return
 	}
@@ -59,7 +59,7 @@ func (ui *UI) ShowGameRoom() {
 	// Get the selected game object
 	selectedGame := games[choice-1]
 
-	// Pass the selected game object to another function
+	// Handle the selected game
 	ui.HandleSelectedGame(&selectedGame)
 }
 
@@ -147,21 +147,6 @@ func (ui *UI) HandleSelectedSlot(game *entities.Game, slot *entities.Slot) {
 			fmt.Printf("- %s\n", userName)
 		}
 	}
-
-	// Display results (winners and losers)
-	//if len(slot.Results) == 0 {
-	//	fmt.Println("⚖️ Results: No results recorded for this slot yet.")
-	//} else {
-	//	fmt.Println("🏅 Results:")
-	//	for _, result := range slot.Results {
-	//		user, _ := ui.userService.GetUserById(result.UserID)
-	//		if result.Result == "win" {
-	//			fmt.Printf("- 🏆 %s (User ID: %s) winner\n", utils.GetNameFromEmail(user.Email), result.UserID)
-	//		} else {
-	//			fmt.Printf("-   %s (User ID: %s) loser\n", utils.GetNameFromEmail(user.Email), result.UserID)
-	//		}
-	//	}
-	//}
 
 	// Show options to the user
 	fmt.Println("\n🔧 Options:")

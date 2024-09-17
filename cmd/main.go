@@ -18,7 +18,7 @@ import (
 func main() {
 
 	// Initialize PostgresSQL client
-	client, err := db.InitClient()
+	client, err := db.PostgresInitClient()
 	if err != nil {
 		log.Fatal("Error initializing PostgresSQL client:", err)
 	}
