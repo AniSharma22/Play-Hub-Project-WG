@@ -17,7 +17,7 @@ func TestUserService_Signup(t *testing.T) {
 		name                       string
 		newUser                    *entities.User
 		mockCreateUserRepo         error
-		mockEmailAlreadyRegistered bool // Changed from error to bool
+		mockEmailAlreadyRegistered bool // Changed from errs to bool
 		expectedError              bool
 		CreateUserCalled           int
 	}{
@@ -42,7 +42,7 @@ func TestUserService_Signup(t *testing.T) {
 				MobileNumber: "8989898989",
 				Gender:       "male",
 			},
-			mockCreateUserRepo:         errors.New("mock repository error"),
+			mockCreateUserRepo:         errors.New("mock repository errs"),
 			mockEmailAlreadyRegistered: false,
 			expectedError:              true,
 			CreateUserCalled:           1,
@@ -85,7 +85,7 @@ func TestUserService_Signup(t *testing.T) {
 			// Call the Signup method
 			err := userService.Signup(ctx, tt.newUser)
 
-			// Assert the expected error outcome
+			// Assert the expected errs outcome
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {
@@ -119,7 +119,7 @@ func TestUserService_EmailAlreadyExists(t *testing.T) {
 			name:           "Error While Scanning in Repository",
 			email:          "test@example.com",
 			mockRepoResult: true,
-			mockRepoError:  errors.New("sql error"),
+			mockRepoError:  errors.New("sql errs"),
 			expected:       true,
 		},
 		{
@@ -205,10 +205,10 @@ func TestUserService_Login(t *testing.T) {
 			name:               "Fetch User Error",
 			email:              "test@example.com",
 			password:           []byte("ValidPassword"),
-			mockFetchUserError: errors.New("database error"),
+			mockFetchUserError: errors.New("database errs"),
 			mockFetchedUser:    nil,
 			expectedError:      true,
-			expectedErrorMsg:   "failed to fetch user by email: database error",
+			expectedErrorMsg:   "failed to fetch user by email: database errs",
 			expectedUserID:     uuid.Nil,
 		},
 	}
@@ -230,7 +230,7 @@ func TestUserService_Login(t *testing.T) {
 			// Call the Login method
 			user, err := userService.Login(ctx, tt.email, tt.password)
 
-			// Assert the expected error outcome
+			// Assert the expected errs outcome
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedErrorMsg)
@@ -285,10 +285,10 @@ func TestUserService_GetUserByID(t *testing.T) {
 			name:             "Repository Error",
 			userID:           uuid.New(),
 			mockFetchUser:    nil,
-			mockFetchError:   errors.New("database error"),
+			mockFetchError:   errors.New("database errs"),
 			expectedUser:     nil,
 			expectedError:    true,
-			expectedErrorMsg: "database error",
+			expectedErrorMsg: "database errs",
 		},
 	}
 
@@ -359,10 +359,10 @@ func TestUserService_GetUserByEmail(t *testing.T) {
 			name:             "Repository Error",
 			email:            "test@example.com",
 			mockFetchUser:    nil,
-			mockFetchError:   errors.New("database error"),
+			mockFetchError:   errors.New("database errs"),
 			expectedUser:     nil,
 			expectedError:    true,
-			expectedErrorMsg: "database error",
+			expectedErrorMsg: "database errs",
 		},
 	}
 
@@ -433,10 +433,10 @@ func TestUserService_GetUserByUsername(t *testing.T) {
 			name:             "Repository Error",
 			username:         "testuser",
 			mockFetchUser:    nil,
-			mockFetchError:   errors.New("database error"),
+			mockFetchError:   errors.New("database errs"),
 			expectedUser:     nil,
 			expectedError:    true,
-			expectedErrorMsg: "database error",
+			expectedErrorMsg: "database errs",
 		},
 	}
 

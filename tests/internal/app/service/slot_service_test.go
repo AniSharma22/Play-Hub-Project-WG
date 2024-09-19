@@ -33,7 +33,7 @@ func TestSlotService_GetCurrentDayGameSlots(t *testing.T) {
 	assert.Equal(t, slots, returnedSlots)
 
 	// Test case: Error fetching slots
-	mockSlotRepo.EXPECT().FetchSlotsByGameIDAndDate(ctx, gameID, gomock.Any()).Return(nil, errors.New("some error")).Times(1)
+	mockSlotRepo.EXPECT().FetchSlotsByGameIDAndDate(ctx, gameID, gomock.Any()).Return(nil, errors.New("some errs")).Times(1)
 
 	_, err = slotService.GetCurrentDayGameSlots(ctx, gameID)
 	assert.Error(t, err)

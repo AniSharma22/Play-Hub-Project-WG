@@ -3,10 +3,13 @@ package utils
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"log"
 	"math"
+	"project2/internal/config"
 	"project2/internal/domain/entities"
 	repository_interfaces "project2/internal/domain/interfaces/repository"
 	"time"
@@ -43,6 +46,24 @@ func GetNameFromEmail(email string) string {
 	return name.String()
 }
 
+func CreateJwtToken(userId uuid.UUID, role string) (string, error) {
+	// Create JWT token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"userId": userId.String(),
+		"role":   role,
+		"exp":    time.Now().Add(time.Minute * 5).Unix(), // Token expiry time (5 minute)
+	})
+
+	// Sign the token with the secret key
+	tokenString, err := token.SignedString(config.MY_SIGNING_KEY)
+	if err != nil {
+		//logger.Logger.Errorw("Error signing token", "method", r.Method, "error", err, "time", time.Now())
+		return "", errors.New("error creating jwt token")
+	}
+
+	return tokenString, nil
+}
+
 func InsertAllSlots(ctx context.Context, slotRepo repository_interfaces.SlotRepository, gameRepo repository_interfaces.GameRepository) error {
 	today := time.Now().Truncate(24 * time.Hour)
 	location, err := time.LoadLocation("Asia/Kolkata")
@@ -53,7 +74,7 @@ func InsertAllSlots(ctx context.Context, slotRepo repository_interfaces.SlotRepo
 	// Fetch all games
 	games, err := gameRepo.FetchAllGames(ctx)
 	if err != nil {
-		return fmt.Errorf("error fetching games: %w", err)
+		return fmt.Errorf("errs fetching games: %w", err)
 	}
 
 	now := time.Now().In(location)
@@ -64,7 +85,7 @@ func InsertAllSlots(ctx context.Context, slotRepo repository_interfaces.SlotRepo
 		// Check for existing slots for this game on today's date
 		existingSlots, err := slotRepo.FetchSlotsByGameIDAndDate(ctx, game.GameID, today)
 		if err != nil {
-			return fmt.Errorf("error checking existing slots for game %s: %w", game.GameName, err)
+			return fmt.Errorf("errs checking existing slots for game %s: %w", game.GameName, err)
 		}
 
 		// If no slots exist, create new slots
@@ -86,7 +107,7 @@ func InsertAllSlots(ctx context.Context, slotRepo repository_interfaces.SlotRepo
 
 				// Insert the new slot
 				if _, err := slotRepo.CreateSlot(ctx, newSlot); err != nil {
-					return fmt.Errorf("error inserting slot for game %s: %w", game.GameName, err)
+					return fmt.Errorf("errs inserting slot for game %s: %w", game.GameName, err)
 				}
 			}
 		}

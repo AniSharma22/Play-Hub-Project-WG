@@ -97,7 +97,7 @@ func (r *invitationRepo) FetchUserInvitations(ctx context.Context, userID uuid.U
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over invitations: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over invitations: %w", err)
 	}
 
 	return invitations, nil
@@ -163,7 +163,7 @@ func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, fmt.Errorf("rows iteration errs: %w", err)
 	}
 
 	return invitations, nil

@@ -89,7 +89,7 @@ func (r *slotRepo) FetchSlotsByDate(ctx context.Context, date time.Time) ([]enti
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over slots: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over slots: %w", err)
 	}
 
 	return slots, nil
@@ -132,7 +132,7 @@ func (r *slotRepo) FetchSlotsByGameID(ctx context.Context, gameID uuid.UUID) ([]
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over slots: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over slots: %w", err)
 	}
 
 	return slots, nil
@@ -164,7 +164,7 @@ func (r *slotRepo) FetchSlotsByGameIDAndDate(ctx context.Context, gameID uuid.UU
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, fmt.Errorf("rows iteration errs: %w", err)
 	}
 
 	return slots, nil

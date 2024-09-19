@@ -46,9 +46,9 @@ func TestNotificationRepo_CreateNotification(t *testing.T) {
 			mockBehavior: func(mock sqlmock.Sqlmock, notification *entities.Notification) {
 				mock.ExpectQuery(`INSERT INTO notifications .+`).
 					WithArgs(notification.UserID, notification.Message, notification.IsRead).
-					WillReturnError(fmt.Errorf("database error"))
+					WillReturnError(fmt.Errorf("database errs"))
 			},
-			expectedError: fmt.Errorf("failed to create notification: database error"),
+			expectedError: fmt.Errorf("failed to create notification: database errs"),
 		},
 	}
 
@@ -119,8 +119,8 @@ func TestFetchNotificationByID(t *testing.T) {
 		assert.Nil(t, notification)
 	})
 
-	t.Run("query error", func(t *testing.T) {
-		mock.ExpectQuery(query).WithArgs(notificationID).WillReturnError(errors.New("query error"))
+	t.Run("query errs", func(t *testing.T) {
+		mock.ExpectQuery(query).WithArgs(notificationID).WillReturnError(errors.New("query errs"))
 
 		// Create a new notification repository
 		repo := repositories.NewNotificationRepo(db)
@@ -128,7 +128,7 @@ func TestFetchNotificationByID(t *testing.T) {
 		_, err := repo.FetchNotificationByID(context.Background(), notificationID)
 
 		assert.Error(t, err)
-		assert.Equal(t, "failed to fetch notification by ID: query error", err.Error())
+		assert.Equal(t, "failed to fetch notification by ID: query errs", err.Error())
 	})
 }
 
@@ -166,13 +166,13 @@ func TestFetchUserNotifications(t *testing.T) {
 		assert.Empty(t, notifications)
 	})
 
-	t.Run("query error", func(t *testing.T) {
-		mock.ExpectQuery(query).WithArgs(userID).WillReturnError(errors.New("query error"))
+	t.Run("query errs", func(t *testing.T) {
+		mock.ExpectQuery(query).WithArgs(userID).WillReturnError(errors.New("query errs"))
 
 		_, err := repo.FetchUserNotifications(context.Background(), userID)
 
 		assert.Error(t, err)
-		assert.Equal(t, "failed to fetch user notifications: query error", err.Error())
+		assert.Equal(t, "failed to fetch user notifications: query errs", err.Error())
 	})
 }
 func TestMarkNotificationAsRead(t *testing.T) {
@@ -192,13 +192,13 @@ func TestMarkNotificationAsRead(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("exec error", func(t *testing.T) {
-		mock.ExpectExec(query).WithArgs(notificationID).WillReturnError(errors.New("exec error"))
+	t.Run("exec errs", func(t *testing.T) {
+		mock.ExpectExec(query).WithArgs(notificationID).WillReturnError(errors.New("exec errs"))
 
 		err := repo.MarkNotificationAsRead(context.Background(), notificationID)
 
 		assert.Error(t, err)
-		assert.Equal(t, "failed to mark notification as read: exec error", err.Error())
+		assert.Equal(t, "failed to mark notification as read: exec errs", err.Error())
 	})
 }
 
@@ -219,12 +219,12 @@ func TestDeleteNotificationByID(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("exec error", func(t *testing.T) {
-		mock.ExpectExec(query).WithArgs(notificationID).WillReturnError(errors.New("exec error"))
+	t.Run("exec errs", func(t *testing.T) {
+		mock.ExpectExec(query).WithArgs(notificationID).WillReturnError(errors.New("exec errs"))
 
 		err := repo.DeleteNotificationByID(context.Background(), notificationID)
 
 		assert.Error(t, err)
-		assert.Equal(t, "failed to delete notification: exec error", err.Error())
+		assert.Equal(t, "failed to delete notification: exec errs", err.Error())
 	})
 }

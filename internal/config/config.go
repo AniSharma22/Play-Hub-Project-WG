@@ -7,3 +7,7 @@ var (
 	Password = "password"
 	Dbname   = "play-hub"
 )
+
+const PORT = ":8081"
+
+var MY_SIGNING_KEY = []byte("SECRET")

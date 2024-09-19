@@ -50,9 +50,9 @@ func TestUserRepo_CreateUser(t *testing.T) {
 			mockBehavior: func(mock sqlmock.Sqlmock, user *entities.User) {
 				mock.ExpectQuery(`INSERT INTO users .+`).
 					WithArgs(user.Username, user.Email, user.Password, user.MobileNumber, user.Gender).
-					WillReturnError(errors.New("database error"))
+					WillReturnError(errors.New("database errs"))
 			},
-			expectedError: errors.New("failed to insert user into PostgreSQL and retrieve user_id: database error"),
+			expectedError: errors.New("failed to insert user into PostgreSQL and retrieve user_id: database errs"),
 		},
 	}
 

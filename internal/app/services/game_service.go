@@ -2,12 +2,12 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"project2/internal/domain/entities"
 	repository_interfaces "project2/internal/domain/interfaces/repository"
 	service_interfaces "project2/internal/domain/interfaces/service"
+	"project2/pkg/errs"
 	"sync"
 )
 
@@ -60,16 +60,16 @@ func (s *GameService) DeleteGame(ctx context.Context, id uuid.UUID) error {
 }
 
 // UpdateGameStatus updates the status of a game (e.g., activate/deactivate)
-func (s *GameService) UpdateGameStatus(ctx context.Context, id uuid.UUID, status bool) error {
+func (s *GameService) UpdateGameStatus(ctx context.Context, id uuid.UUID) error {
 	game, err := s.gameRepo.FetchGameByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to fetch game by ID: %w", err)
 	}
 	if game == nil {
-		return errors.New("game not found")
+		return fmt.Errorf("game not found: %w", errs.ErrGameNotFound)
 	}
 
-	err = s.gameRepo.UpdateGameStatus(ctx, game.GameID, status)
+	err = s.gameRepo.UpdateGameStatus(ctx, game.GameID, !game.IsActive)
 	if err != nil {
 		return fmt.Errorf("failed to update game status: %w", err)
 	}

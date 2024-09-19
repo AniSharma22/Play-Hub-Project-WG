@@ -42,7 +42,7 @@ func InitializeTables() {
 			game_name VARCHAR(255) NOT NULL,
 			min_players INT,
 			max_players INT,
-			instances INT,
+			instances INT,	
 			is_active BOOLEAN DEFAULT TRUE,
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP

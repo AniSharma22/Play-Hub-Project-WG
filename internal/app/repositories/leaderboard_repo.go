@@ -45,7 +45,7 @@ func (r *leaderboardRepo) FetchGameLeaderboard(ctx context.Context, gameID uuid.
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over leaderboard: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over leaderboard: %w", err)
 	}
 
 	return leaderboard, nil
@@ -87,7 +87,7 @@ func (r *leaderboardRepo) FetchUserOverallStats(ctx context.Context, userID uuid
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over stats: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over stats: %w", err)
 	}
 
 	return stats, nil

@@ -89,7 +89,7 @@ func (r *bookingRepo) FetchBookingsByUserID(ctx context.Context, userID uuid.UUI
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over bookings: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over bookings: %w", err)
 	}
 
 	return bookings, nil
@@ -124,7 +124,7 @@ func (r *bookingRepo) FetchBookingsBySlotID(ctx context.Context, slotID uuid.UUI
 
 	// Check for errors that occurred during iteration
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, fmt.Errorf("rows iteration errs: %w", err)
 	}
 
 	return bookings, nil
@@ -172,7 +172,7 @@ func (r *bookingRepo) FetchUpcomingBookingsByUserID(ctx context.Context, userID 
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, fmt.Errorf("rows iteration errs: %w", err)
 	}
 
 	return bookings, nil
@@ -259,7 +259,7 @@ func (r *bookingRepo) FetchBookingsToUpdateResult(ctx context.Context, userID uu
 
 	// Check for any errors encountered during iteration
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, fmt.Errorf("rows iteration errs: %w", err)
 	}
 
 	return bookings, nil
@@ -294,9 +294,9 @@ func (r *bookingRepo) FetchSlotBookedUsers(ctx context.Context, slotId uuid.UUID
 		usernames = append(usernames, username)
 	}
 
-	// Check for any error that occurred during iteration
+	// Check for any errs that occurred during iteration
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred during rows iteration: %w", err)
+		return nil, fmt.Errorf("errs occurred during rows iteration: %w", err)
 	}
 
 	return usernames, nil

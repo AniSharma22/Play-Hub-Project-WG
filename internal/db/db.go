@@ -80,6 +80,6 @@ func PostgresInitClient() (*sql.DB, error) {
 		log.Println("Successfully connected to PostgresSQL")
 	})
 
-	// Return dbInstance and any error that occurred during initialization
+	// Return dbInstance and any errs that occurred during initialization
 	return dbInstance, err
 }

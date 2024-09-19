@@ -92,7 +92,7 @@ func (r *userRepo) FetchAllUsers(ctx context.Context) ([]entities.User, error) {
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error encountered during rows iteration: %w", err)
+		return nil, fmt.Errorf("errs encountered during rows iteration: %w", err)
 	}
 
 	return users, nil

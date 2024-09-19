@@ -56,7 +56,7 @@ func (r *gameRepo) FetchAllGames(ctx context.Context) ([]entities.Game, error) {
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over games: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over games: %w", err)
 	}
 
 	return games, nil

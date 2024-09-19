@@ -35,7 +35,7 @@ func TestLeaderboardService_GetGameLeaderboard(t *testing.T) {
 		{
 			name: "Failed Leaderboard Retrieval",
 			mockSetup: func() {
-				mockLeaderboardRepo.EXPECT().FetchGameLeaderboard(ctx, gameId).Return(nil, errors.New("error"))
+				mockLeaderboardRepo.EXPECT().FetchGameLeaderboard(ctx, gameId).Return(nil, errors.New("errs"))
 			},
 			expectedError:       true,
 			expectedLeaderboard: nil,
@@ -108,7 +108,7 @@ func TestLeaderboardService_AddWinToUser(t *testing.T) {
 			mockSetup: func() {
 				mockLeaderboardRepo.EXPECT().
 					FetchUserGameStats(ctx, userID, gameID).
-					Return(nil, errors.New("database error"))
+					Return(nil, errors.New("database errs"))
 			},
 			expectedError: true,
 		},
@@ -122,7 +122,7 @@ func TestLeaderboardService_AddWinToUser(t *testing.T) {
 				// Simulate failure while updating user stats
 				mockLeaderboardRepo.EXPECT().
 					UpdateUserGameStats(ctx, mockUserStats).
-					Return(errors.New("update error"))
+					Return(errors.New("update errs"))
 			},
 			expectedError: true,
 		},
@@ -144,7 +144,7 @@ func TestLeaderboardService_AddWinToUser(t *testing.T) {
 				// Simulate failure while updating booking result
 				mockBookingService.EXPECT().
 					UpdateBookingResult(ctx, bookingID, "win").
-					Return(errors.New("booking update error"))
+					Return(errors.New("booking update errs"))
 			},
 			expectedError: true,
 		},
@@ -214,7 +214,7 @@ func TestLeaderboardService_AddLossToUser(t *testing.T) {
 			mockSetup: func() {
 				mockLeaderboardRepo.EXPECT().
 					FetchUserGameStats(ctx, userID, gameID).
-					Return(nil, errors.New("database error"))
+					Return(nil, errors.New("database errs"))
 			},
 			expectedError: true,
 		},
@@ -228,7 +228,7 @@ func TestLeaderboardService_AddLossToUser(t *testing.T) {
 				// Simulate failure while updating user stats
 				mockLeaderboardRepo.EXPECT().
 					UpdateUserGameStats(ctx, mockUserStats).
-					Return(errors.New("update error"))
+					Return(errors.New("update errs"))
 			},
 			expectedError: true,
 		},
@@ -250,7 +250,7 @@ func TestLeaderboardService_AddLossToUser(t *testing.T) {
 				// Simulate failure while updating booking result
 				mockBookingService.EXPECT().
 					UpdateBookingResult(ctx, bookingID, "loss").
-					Return(errors.New("booking update error"))
+					Return(errors.New("booking update errs"))
 			},
 			expectedError: true,
 		},

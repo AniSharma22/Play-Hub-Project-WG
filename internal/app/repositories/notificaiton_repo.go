@@ -65,7 +65,7 @@ func (r *notificationRepo) FetchUserNotifications(ctx context.Context, userID uu
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over notifications: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over notifications: %w", err)
 	}
 
 	return notifications, nil
