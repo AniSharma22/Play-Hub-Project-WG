@@ -7,6 +7,7 @@ import (
 )
 
 type UserService interface {
+	GetAllUsers(ctx context.Context) ([]entities.User, error)
 	EmailAlreadyRegistered(ctx context.Context, email string) bool
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*entities.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*entities.User, error)

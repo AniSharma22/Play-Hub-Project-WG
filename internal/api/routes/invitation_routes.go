@@ -11,7 +11,7 @@ func InitialiseInvitationRouter(r *mux.Router, invitationHandler *handlers.Invit
 	invitationRouter := r.PathPrefix("/invitations").Subrouter()
 	invitationRouter.Use(middleware.JwtAuthMiddleware)
 
-	invitationRouter.HandleFunc("", invitationHandler.CreateInvitationHandler)
-	invitationRouter.HandleFunc("/{id}", invitationHandler.UpdateInvitationStatusHandler)
+	invitationRouter.HandleFunc("", invitationHandler.CreateInvitationHandler).Methods(http.MethodPost)
+	invitationRouter.HandleFunc("/{id}", invitationHandler.UpdateInvitationStatusHandler).Methods(http.MethodPatch)
 	invitationRouter.HandleFunc("", invitationHandler.GetPendingInvitationHandler).Methods(http.MethodGet)
 }

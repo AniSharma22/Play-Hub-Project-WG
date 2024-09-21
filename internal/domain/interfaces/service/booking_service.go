@@ -7,7 +7,7 @@ import (
 )
 
 type BookingService interface {
-	MakeBooking(ctx context.Context, userID uuid.UUID, slotID uuid.UUID) error
+	MakeBooking(ctx context.Context, userID uuid.UUID, slotID uuid.UUID, gameID uuid.UUID) error
 	GetUpcomingBookings(ctx context.Context, userID uuid.UUID) ([]models.Bookings, error)
 	GetBookingsToUpdateResult(ctx context.Context, userID uuid.UUID) ([]models.Bookings, error)
 	UpdateBookingResult(ctx context.Context, bookingId uuid.UUID, result string) error

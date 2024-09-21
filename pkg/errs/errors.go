@@ -19,79 +19,59 @@ var (
 )
 
 type AppError struct {
-	error   `json:"error,omitempty"`
-	Code    int    `json:"status_code,omitempty"`
-	Message string `json:"message"`
+	error      `json:"-"`
+	StatusCode int    `json:"-"`
+	Message    string `json:"message"`
 }
 
 func NewNotFoundError(message string) *AppError {
 	return &AppError{
-		Code:    http.StatusNotFound,
-		Message: message,
-	}
-}
-
-func NewUnexpectedError(message string) *AppError {
-	return &AppError{
-		Code:    http.StatusInternalServerError,
-		Message: message,
+		StatusCode: http.StatusNotFound,
+		Message:    message,
 	}
 }
 
 func NewBadRequestError(message string) *AppError {
 	return &AppError{
-		Code:    http.StatusBadRequest,
-		Message: message,
-	}
-}
-
-func NewInvalidParameterError(message string) *AppError {
-	return &AppError{
-		Code:    http.StatusBadRequest,
-		Message: message,
-	}
-}
-
-func NewInvalidBodyError(message string) *AppError {
-	return &AppError{
-		Code:    http.StatusBadRequest,
-		Message: message,
-	}
-}
-
-func NewInvalidRequestMethodError(message string) *AppError {
-	return &AppError{
-		Code:    http.StatusMethodNotAllowed,
-		Message: message,
+		StatusCode: http.StatusBadRequest,
+		Message:    message,
 	}
 }
 
 func NewInternalServerError(message string) *AppError {
 	return &AppError{
-		Code:    http.StatusInternalServerError,
-		Message: message,
+		StatusCode: http.StatusInternalServerError,
+		Message:    message,
 	}
 }
 
 func NewConflictError(message string) *AppError {
 	return &AppError{
-		Code:    http.StatusConflict,
-		Message: message,
+		StatusCode: http.StatusConflict,
+		Message:    message,
+	}
+}
+
+func NewUnexpectedError(message string) *AppError {
+	return &AppError{
+		StatusCode: http.StatusInternalServerError,
+		Message:    message,
 	}
 }
 
 func NewUnauthorizedError(message string) *AppError {
 	return &AppError{
-		Code:    http.StatusUnauthorized,
-		Message: message,
+		StatusCode: http.StatusUnauthorized,
+		Message:    message,
 	}
 }
 
 func (e *AppError) ToJSON(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(e.Code)
+	w.WriteHeader(e.StatusCode)
 	err := json.NewEncoder(w).Encode(e)
 	if err != nil {
+		// Handle encoding error (e.g., log it)
 		return
 	}
 }

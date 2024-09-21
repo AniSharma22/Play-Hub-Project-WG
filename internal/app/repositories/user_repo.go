@@ -75,7 +75,7 @@ func (r *userRepo) FetchUserById(ctx context.Context, id uuid.UUID) (*entities.U
 
 // FetchAllUsers retrieves all users from the database.
 func (r *userRepo) FetchAllUsers(ctx context.Context) ([]entities.User, error) {
-	query := `SELECT user_id, username, email, password, mobile_number, gender FROM users`
+	query := `SELECT user_id, username, email, password, mobile_number, gender,role FROM users`
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all users: %w", err)
@@ -85,7 +85,7 @@ func (r *userRepo) FetchAllUsers(ctx context.Context) ([]entities.User, error) {
 	var users []entities.User
 	for rows.Next() {
 		var user entities.User
-		if err := rows.Scan(&user.UserID, &user.Username, &user.Email, &user.Password, &user.MobileNumber, &user.Gender); err != nil {
+		if err := rows.Scan(&user.UserID, &user.Username, &user.Email, &user.Password, &user.MobileNumber, &user.Gender, &user.Role); err != nil {
 			return nil, fmt.Errorf("failed to scan user: %w", err)
 		}
 		users = append(users, user)

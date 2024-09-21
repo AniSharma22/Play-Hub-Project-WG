@@ -12,6 +12,5 @@ func InitialiseLeaderboardRouter(r *mux.Router, leaderboardHandler *handlers.Lea
 	leaderboardRouter.Use(middleware.JwtAuthMiddleware)
 
 	leaderboardRouter.HandleFunc("/games/{gameID}", leaderboardHandler.GetGameLeaderboardHandler)
-	leaderboardRouter.HandleFunc("/add-win", leaderboardHandler.AddWinToUserHandler).Methods(http.MethodPost)
-	leaderboardRouter.HandleFunc("/add-loss", leaderboardHandler.AddLossToUserHandler).Methods(http.MethodPost)
+	leaderboardRouter.HandleFunc("/record-result", leaderboardHandler.RecordUserResultHandler).Methods(http.MethodPost)
 }

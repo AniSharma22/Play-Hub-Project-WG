@@ -5,7 +5,7 @@ var (
 	Port     = 5432
 	User     = "postgres"
 	Password = "password"
-	Dbname   = "play-hub"
+	Dbname   = "play-hub-web"
 )
 
 const PORT = ":8081"

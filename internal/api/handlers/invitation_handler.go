@@ -24,22 +24,27 @@ func NewInvitationHandler(invitationService service_interfaces.InvitationService
 }
 
 func (i *InvitationHandler) CreateInvitationHandler(w http.ResponseWriter, r *http.Request) {
+	logger.Logger.Infow("CreateInvitationHandler called", "method", r.Method, "time", time.Now())
+
 	// Extract userId from the context
 	userIdStr, ok := r.Context().Value(middleware.UserIdKey).(string)
 	if !ok {
 		errs.NewUnexpectedError("Could not find the userId").ToJSON(w)
+		logger.Logger.Errorw("User ID not found in context", "method", r.Method, "time", time.Now())
 		return
 	}
 
 	userId, err := uuid.Parse(userIdStr)
 	if err != nil {
 		errs.NewInternalServerError("Couldn't parse user id").ToJSON(w)
+		logger.Logger.Errorw("Failed to parse userId", "userId", userIdStr, "error", err, "time", time.Now())
 		return
 	}
 
 	var requestBody struct {
 		InvitedUserID string `json:"invited_user_id" validate:"required"`
 		SlotId        string `json:"slot_id" validate:"required"`
+		GameId        string `json:"game_id" validate:"required"`
 	}
 
 	// decode the request body
@@ -53,26 +58,35 @@ func (i *InvitationHandler) CreateInvitationHandler(w http.ResponseWriter, r *ht
 	// Validate the request body
 	err = validate.Struct(requestBody)
 	if err != nil {
-		errs.NewInvalidBodyError("Invalid request body").ToJSON(w)
+		errs.NewBadRequestError("Invalid request body").ToJSON(w)
 		logger.Logger.Errorw("Validation error", "method", r.Method, "error", err, "request", requestBody, "time", time.Now())
+		return
+	}
+	GameId, err := uuid.Parse(requestBody.GameId)
+	if err != nil {
+		errs.NewInternalServerError("Couldn't parse game id").ToJSON(w)
+		logger.Logger.Errorw("Failed to parse game id", "gameId", requestBody.GameId, "error", err, "time", time.Now())
 		return
 	}
 
 	InvitedUserId, err := uuid.Parse(requestBody.InvitedUserID)
 	if err != nil {
-		errs.NewInternalServerError("Couldn't parse user id").ToJSON(w)
+		errs.NewInternalServerError("Couldn't parse invited user id").ToJSON(w)
+		logger.Logger.Errorw("Failed to parse invited userId", "InvitedUserID", requestBody.InvitedUserID, "error", err, "time", time.Now())
 		return
 	}
 
 	SlotId, err := uuid.Parse(requestBody.SlotId)
 	if err != nil {
 		errs.NewInternalServerError("Couldn't parse slot id").ToJSON(w)
+		logger.Logger.Errorw("Failed to parse slotId", "SlotId", requestBody.SlotId, "error", err, "time", time.Now())
 		return
 	}
 
-	invitationId, err := i.invitationService.MakeInvitation(r.Context(), userId, InvitedUserId, SlotId)
+	invitationId, err := i.invitationService.MakeInvitation(r.Context(), userId, InvitedUserId, SlotId, GameId)
 	if err != nil {
 		errs.NewInternalServerError("Couldn't create invitation").ToJSON(w)
+		logger.Logger.Errorw("Failed to create invitation", "method", r.Method, "error", err, "time", time.Now())
 		return
 	}
 
@@ -83,16 +97,19 @@ func (i *InvitationHandler) CreateInvitationHandler(w http.ResponseWriter, r *ht
 		"data":    invitationId,
 	}
 	json.NewEncoder(w).Encode(jsonResponse)
-	logger.Logger.Infow("Invite created successfully", "method", r.Method, "time", time.Now())
+	logger.Logger.Infow("Invite created successfully", "invitationId", invitationId, "method", r.Method, "time", time.Now())
 }
 
 func (i *InvitationHandler) UpdateInvitationStatusHandler(w http.ResponseWriter, r *http.Request) {
+	logger.Logger.Infow("UpdateInvitationStatusHandler called", "method", r.Method, "time", time.Now())
+
 	vars := mux.Vars(r)
 	invitationIdStr := vars["id"]
 
 	invitationId, err := uuid.Parse(invitationIdStr)
 	if err != nil {
 		errs.NewInternalServerError("Couldn't parse invitation id").ToJSON(w)
+		logger.Logger.Errorw("Failed to parse invitationId", "invitationId", invitationIdStr, "error", err, "time", time.Now())
 		return
 	}
 
@@ -102,18 +119,23 @@ func (i *InvitationHandler) UpdateInvitationStatusHandler(w http.ResponseWriter,
 		err = i.invitationService.AcceptInvitation(r.Context(), invitationId)
 		if err != nil {
 			errs.NewInternalServerError("Couldn't accept invitation").ToJSON(w)
+			logger.Logger.Errorw("Failed to accept invitation", "invitationId", invitationId, "error", err, "time", time.Now())
 			return
 		}
+		logger.Logger.Infow("Invitation accepted", "invitationId", invitationId, "time", time.Now())
 
 	case "reject":
 		err = i.invitationService.RejectInvitation(r.Context(), invitationId)
 		if err != nil {
 			errs.NewInternalServerError("Couldn't reject invitation").ToJSON(w)
+			logger.Logger.Errorw("Failed to reject invitation", "invitationId", invitationId, "error", err, "time", time.Now())
 			return
 		}
+		logger.Logger.Infow("Invitation rejected", "invitationId", invitationId, "time", time.Now())
 
 	default:
 		errs.NewBadRequestError("Invalid action").ToJSON(w)
+		logger.Logger.Warnw("Invalid action attempted", "action", action, "time", time.Now())
 		return
 	}
 
@@ -123,25 +145,30 @@ func (i *InvitationHandler) UpdateInvitationStatusHandler(w http.ResponseWriter,
 		"message": "Success",
 	}
 	json.NewEncoder(w).Encode(jsonResponse)
-	logger.Logger.Infow("Invitation Update Successful", "method", r.Method, "time", time.Now())
+	logger.Logger.Infow("Invitation status updated successfully", "invitationId", invitationId, "action", action, "time", time.Now())
 }
 
 func (i *InvitationHandler) GetPendingInvitationHandler(w http.ResponseWriter, r *http.Request) {
+	logger.Logger.Infow("GetPendingInvitationHandler called", "method", r.Method, "time", time.Now())
+
 	userIdStr, ok := r.Context().Value(middleware.UserIdKey).(string)
 	if !ok {
 		errs.NewUnexpectedError("Could not find the userId").ToJSON(w)
+		logger.Logger.Errorw("User ID not found in context", "method", r.Method, "time", time.Now())
 		return
 	}
 
 	userId, err := uuid.Parse(userIdStr)
 	if err != nil {
 		errs.NewInternalServerError("Couldn't parse user id").ToJSON(w)
+		logger.Logger.Errorw("Failed to parse userId", "userId", userIdStr, "error", err, "time", time.Now())
 		return
 	}
 
 	invitations, err := i.invitationService.GetAllPendingInvitations(r.Context(), userId)
 	if err != nil {
 		errs.NewInternalServerError("Couldn't get pending invitations").ToJSON(w)
+		logger.Logger.Errorw("Failed to fetch pending invitations", "userId", userId, "error", err, "time", time.Now())
 		return
 	}
 
@@ -149,7 +176,7 @@ func (i *InvitationHandler) GetPendingInvitationHandler(w http.ResponseWriter, r
 	jsonResponse := map[string]any{
 		"code":    http.StatusOK,
 		"message": "Success",
-		"data": func() []models.Invitations {
+		"pending_invitations": func() []models.Invitations {
 			if invitations == nil {
 				return []models.Invitations{}
 			}
@@ -157,5 +184,5 @@ func (i *InvitationHandler) GetPendingInvitationHandler(w http.ResponseWriter, r
 		}(),
 	}
 	json.NewEncoder(w).Encode(jsonResponse)
-	logger.Logger.Infow("Pending Invitations sent successfully", "method", r.Method, "time", time.Now())
+	logger.Logger.Infow("Pending Invitations sent successfully", "userId", userId, "method", r.Method, "time", time.Now())
 }

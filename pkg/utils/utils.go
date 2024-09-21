@@ -9,9 +9,11 @@ import (
 	"github.com/google/uuid"
 	"log"
 	"math"
+	"net/http"
 	"project2/internal/config"
 	"project2/internal/domain/entities"
 	repository_interfaces "project2/internal/domain/interfaces/repository"
+	"strings"
 	"time"
 )
 
@@ -62,6 +64,28 @@ func CreateJwtToken(userId uuid.UUID, role string) (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+func GetIP(r *http.Request) string {
+	// Check if the request came via a proxy (useful in production)
+	// Most proxies add the client IP in the "X-Forwarded-For" header
+	// or "X-Real-Ip"
+	xff := r.Header.Get("X-Forwarded-For")
+	if xff != "" {
+		// "X-Forwarded-For" can contain multiple IP addresses,
+		// take the first one which is the client IP
+		ips := strings.Split(xff, ",")
+		return strings.TrimSpace(ips[0])
+	}
+
+	// Fallback to remote address if no proxy is involved
+	ip := r.RemoteAddr
+
+	// RemoteAddr can contain the IP and port (e.g., "192.168.1.1:12345")
+	// Split it to get only the IP
+	ip = strings.Split(ip, ":")[0]
+
+	return ip
 }
 
 func InsertAllSlots(ctx context.Context, slotRepo repository_interfaces.SlotRepository, gameRepo repository_interfaces.GameRepository) error {

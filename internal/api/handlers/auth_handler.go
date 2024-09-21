@@ -38,7 +38,10 @@ func NewAuthHandler(authService service_interfaces.AuthService) *AuthHandler {
 }
 
 func (a *AuthHandler) SignupHandler(w http.ResponseWriter, r *http.Request) {
-	// define the request body
+	startTime := time.Now()
+	logger.Logger.Infow("Signup request received", "method", r.Method, "time", startTime)
+
+	// Define the request body
 	var requestBody struct {
 		Email    string `json:"email" validate:"required,isValidEmail"`
 		Password string `json:"password" validate:"required,isValidPassword"`
@@ -46,7 +49,7 @@ func (a *AuthHandler) SignupHandler(w http.ResponseWriter, r *http.Request) {
 		Gender   string `json:"gender" validate:"required,isValidGender"`
 	}
 
-	// decode the request body
+	// Decode the request body
 	err := json.NewDecoder(r.Body).Decode(&requestBody)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -57,7 +60,7 @@ func (a *AuthHandler) SignupHandler(w http.ResponseWriter, r *http.Request) {
 	// Validate the request body
 	err = validate.Struct(requestBody)
 	if err != nil {
-		errs.NewInvalidBodyError("Invalid request body").ToJSON(w)
+		errs.NewBadRequestError("Invalid request body").ToJSON(w)
 		logger.Logger.Errorw("Validation error", "method", r.Method, "error", err, "request", requestBody, "time", time.Now())
 		return
 	}
@@ -69,22 +72,24 @@ func (a *AuthHandler) SignupHandler(w http.ResponseWriter, r *http.Request) {
 		MobileNumber: requestBody.PhoneNo,
 	}
 
-	// call the signup service
+	// Call the signup service
 	user, err := a.authService.Signup(r.Context(), userBody)
 	if err != nil {
 		if errors.Is(err, errs.ErrEmailExists) {
 			errs.NewConflictError("Email already exists").ToJSON(w)
-			logger.Logger.Errorw("Email Already Exists : Conflict Error", "method", r.Method, "error", err, "request", requestBody, "time", time.Now())
+			logger.Logger.Warnw("Email conflict during signup", "method", r.Method, "request", requestBody, "time", time.Now())
 			return
 		}
 		errs.NewInternalServerError("Internal Server Error").ToJSON(w)
+		logger.Logger.Errorw("Internal server error during signup", "method", r.Method, "error", err, "request", requestBody, "time", time.Now())
 		return
 	}
 
-	// create a jwt token
+	// Create a JWT token
 	token, err := utils.CreateJwtToken(user.UserID, user.Role)
 	if err != nil {
 		errs.NewInternalServerError("Failed to generate token").ToJSON(w)
+		logger.Logger.Errorw("Failed to generate token", "method", r.Method, "error", err, "time", time.Now())
 		return
 	}
 
@@ -96,12 +101,15 @@ func (a *AuthHandler) SignupHandler(w http.ResponseWriter, r *http.Request) {
 		"role":  user.Role,
 	}
 	json.NewEncoder(w).Encode(jsonResponse)
-	logger.Logger.Infow("Signup Successful", "method", r.Method, "request", requestBody, "time", time.Now())
+
+	logger.Logger.Infow("Signup successful", "method", r.Method, "email", requestBody.Email, "role", user.Role, "time", time.Now(), "duration", time.Since(startTime))
 }
 
 func (a *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	logger.Logger.Infow("Login request received", "method", r.Method, "time", startTime)
 
-	// Define the request body structure;;
+	// Define the request body structure
 	var requestBody struct {
 		Email    string `json:"email" validate:"required"`
 		Password string `json:"password" validate:"required"`
@@ -118,35 +126,36 @@ func (a *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// Validate the request body
 	err = validate.Struct(requestBody)
 	if err != nil {
-		errs.NewInvalidBodyError("Invalid request body").ToJSON(w)
+		errs.NewBadRequestError("Invalid request body").ToJSON(w)
 		logger.Logger.Errorw("Validation error", "method", r.Method, "error", err, "request", requestBody, "time", time.Now())
 		return
 	}
 
-	// call the login service
+	// Call the login service
 	user, err := a.authService.Login(r.Context(), requestBody.Email, []byte(requestBody.Password))
 	if err != nil {
-		// Check if the error is an "invalid password" error
 		if errors.Is(err, errs.ErrInvalidPassword) {
 			errs.NewUnauthorizedError("Invalid username or password").ToJSON(w)
+			logger.Logger.Warnw("Invalid password", "method", r.Method, "email", requestBody.Email, "time", time.Now())
 			return
 		}
 
-		// Check if the error is a "user not found" error
 		if errors.Is(err, errs.ErrUserNotFound) {
 			errs.NewNotFoundError("No such user exists").ToJSON(w)
+			logger.Logger.Warnw("User not found", "method", r.Method, "email", requestBody.Email, "time", time.Now())
 			return
 		}
 
-		// Only option is Internal api error
 		errs.NewInternalServerError("Internal Server Error").ToJSON(w)
+		logger.Logger.Errorw("Internal server error during login", "method", r.Method, "error", err, "request", requestBody, "time", time.Now())
 		return
 	}
 
-	// create a jwt token
+	// Create a JWT token
 	token, err := utils.CreateJwtToken(user.UserID, user.Role)
 	if err != nil {
 		errs.NewInternalServerError("Failed to generate token").ToJSON(w)
+		logger.Logger.Errorw("Failed to generate token", "method", r.Method, "error", err, "time", time.Now())
 		return
 	}
 
@@ -158,15 +167,21 @@ func (a *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		"role":  user.Role,
 	}
 	json.NewEncoder(w).Encode(jsonResponse)
-	logger.Logger.Infow("Login Successful", "method", r.Method, "request", requestBody, "time", time.Now())
+
+	logger.Logger.Infow("Login successful", "method", r.Method, "email", requestBody.Email, "role", user.Role, "time", time.Now(), "duration", time.Since(startTime))
 }
 
 func (a *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	logger.Logger.Infow("Logout request received", "method", r.Method, "time", startTime)
+
+	// Return success response
 	w.Header().Set("Content-Type", "application/json")
 	jsonResponse := map[string]any{
 		"code":    http.StatusOK,
 		"message": "Logout Successful",
 	}
 	json.NewEncoder(w).Encode(jsonResponse)
-	logger.Logger.Infow("Logout Successful", "method", r.Method, "time", time.Now())
+
+	logger.Logger.Infow("Logout successful", "method", r.Method, "time", time.Now(), "duration", time.Since(startTime))
 }

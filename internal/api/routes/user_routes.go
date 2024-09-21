@@ -14,7 +14,6 @@ func InitialiseUserRouter(r *mux.Router, userHandler *handlers.UserHandler) {
 	userRouter.Use(middleware.JwtAuthMiddleware)
 
 	// Routes to handle specific user requests
-	userRouter.HandleFunc("/me", userHandler.GetUserProfileHandler)
-	userRouter.HandleFunc("", userHandler.GetAllUsersHandler) // no use as of now
-	userRouter.HandleFunc("/{userID}", userHandler.GetUserByIdHandler)
+	userRouter.HandleFunc("", middleware.AdminMiddleware(userHandler.GetAllUsersHandler))
+	userRouter.HandleFunc("/{id}", userHandler.GetUserProfileHandler)
 }

@@ -12,6 +12,6 @@ func InitialiseBookingRouter(r *mux.Router, bookingHandler *handlers.BookingHand
 	bookingRouter.Use(middleware.JwtAuthMiddleware)
 
 	bookingRouter.HandleFunc("", bookingHandler.CreateBookingHandler).Methods(http.MethodPost)
-	bookingRouter.HandleFunc("/upcoming", bookingHandler.GetUpcomingBookingsHandler).Methods(http.MethodGet)
-	bookingRouter.HandleFunc("/pending-results", bookingHandler.GetPendingResultsHandler).Methods(http.MethodGet)
+	bookingRouter.HandleFunc("", bookingHandler.GetUserBookingsHandler).Methods(http.MethodGet)
+	//bookingRouter.HandleFunc("/pending-results", bookingHandler.GetPendingResultsHandler).Methods(http.MethodGet)
 }

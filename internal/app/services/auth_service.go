@@ -33,6 +33,7 @@ func (a *AuthService) Signup(ctx context.Context, user *entities.User) (*entitie
 	}
 
 	user.Username = utils.GetNameFromEmail(user.Email)
+	user.Password, _ = utils.GetHashedPassword([]byte(user.Password))
 
 	// Create user
 	userId, err := a.userRepo.CreateUser(ctx, user)

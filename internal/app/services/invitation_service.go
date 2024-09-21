@@ -31,7 +31,7 @@ func NewInvitationService(invitationRepo repository_interfaces.InvitationReposit
 }
 
 // MakeInvitation creates a new invitation.
-func (s *InvitationService) MakeInvitation(ctx context.Context, invitingUserID, invitedUserID uuid.UUID, slotId uuid.UUID) (uuid.UUID, error) {
+func (s *InvitationService) MakeInvitation(ctx context.Context, invitingUserID, invitedUserID uuid.UUID, slotId uuid.UUID, gameID uuid.UUID) (uuid.UUID, error) {
 
 	// Check if the user is trying to invite themselves
 	if invitingUserID == invitedUserID {
@@ -68,6 +68,7 @@ func (s *InvitationService) MakeInvitation(ctx context.Context, invitingUserID, 
 		InvitingUserID: invitingUserID,
 		InvitedUserID:  invitedUserID,
 		SlotID:         slotId,
+		GameID:         gameID,
 	}
 
 	// Create the invitation in the repository
@@ -113,7 +114,7 @@ func (s *InvitationService) AcceptInvitation(ctx context.Context, invitationID u
 		return errors.New("you already have this slot booked")
 	}
 
-	err = s.bookingService.MakeBooking(ctx, globals.ActiveUser, invitation.SlotID)
+	err = s.bookingService.MakeBooking(ctx, globals.ActiveUser, invitation.SlotID, invitation.GameID)
 	if err != nil {
 		return errors.New("failed to booking invitation")
 	}

@@ -66,9 +66,9 @@ func (mr *MockInvitationServiceMockRecorder) GetAllPendingInvitations(ctx, userI
 }
 
 // MakeInvitation mocks base method.
-func (m *MockInvitationService) MakeInvitation(ctx context.Context, invitingUserID, invitedUserID, slotId uuid.UUID) (uuid.UUID, error) {
+func (m *MockInvitationService) MakeInvitation(ctx context.Context, invitingUserID, invitedUserID, slotId uuid.UUID,gameId uuid.UUID) (uuid.UUID, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MakeInvitation", ctx, invitingUserID, invitedUserID, slotId)
+	ret := m.ctrl.Call(m, "MakeInvitation", ctx, invitingUserID, invitedUserID, slotId,gameId)
 	ret0, _ := ret[0].(uuid.UUID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1

@@ -26,7 +26,7 @@ func NewBookingService(bookRepo repository_interfaces.BookingRepository, slotSer
 	}
 }
 
-func (b *BookingService) MakeBooking(ctx context.Context, userID, slotID uuid.UUID) error {
+func (b *BookingService) MakeBooking(ctx context.Context, userID, slotID, gameID uuid.UUID) error {
 	// Fetch the slot and validate
 	slot, err := b.SlotService.GetSlotByID(ctx, slotID)
 	if err != nil {
@@ -45,7 +45,8 @@ func (b *BookingService) MakeBooking(ctx context.Context, userID, slotID uuid.UU
 	}
 
 	// Create new booking
-	newBooking := &entities.Booking{SlotID: slotID, UserID: userID}
+	newBooking := &entities.Booking{SlotID: slotID, UserID: userID, GameID: gameID}
+	fmt.Println(newBooking)
 	if _, err := b.bookRepo.CreateBooking(ctx, newBooking); err != nil {
 		return fmt.Errorf("failed to create booking: %w", errs.ErrDbError)
 	}

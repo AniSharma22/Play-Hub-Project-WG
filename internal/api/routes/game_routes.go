@@ -13,7 +13,7 @@ func InitialiseGameRouter(r *mux.Router, gameHandler *handlers.GameHandler) {
 
 	gameRouter.HandleFunc("", gameHandler.GetAllGamesHandler).Methods(http.MethodGet)
 	gameRouter.HandleFunc("", middleware.AdminMiddleware(gameHandler.CreateGameHandler)).Methods(http.MethodPost)
-	gameRouter.HandleFunc("/{id}", gameHandler.GetGameByIdHandler).Methods(http.MethodGet)
+	//gameRouter.HandleFunc("/{id}", gameHandler.GetGameByIdHandler).Methods(http.MethodGet)
 	gameRouter.HandleFunc("/{id}", middleware.AdminMiddleware(gameHandler.UpdateGameStatusHandler)).Methods(http.MethodPut)
 	gameRouter.HandleFunc("/{id}", middleware.AdminMiddleware(gameHandler.DeleteGameHandler)).Methods(http.MethodDelete)
 }

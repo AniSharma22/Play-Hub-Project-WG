@@ -22,9 +22,9 @@ func NewInvitationRepo(db *sql.DB) interfaces.InvitationRepository {
 
 // CreateInvitation inserts a new invitation into the database and returns the created invitation ID.
 func (r *invitationRepo) CreateInvitation(ctx context.Context, invitation *entities.Invitation) (uuid.UUID, error) {
-	query := `INSERT INTO invitations (inviting_user_id, invited_user_id, slot_id) VALUES ($1, $2, $3) RETURNING invitation_id`
+	query := `INSERT INTO invitations (inviting_user_id, invited_user_id, slot_id,game_id) VALUES ($1, $2, $3, $4) RETURNING invitation_id`
 	var id uuid.UUID
-	err := r.db.QueryRowContext(ctx, query, invitation.InvitingUserID, invitation.InvitedUserID, invitation.SlotID).Scan(&id)
+	err := r.db.QueryRowContext(ctx, query, invitation.InvitingUserID, invitation.InvitedUserID, invitation.SlotID, invitation.GameID).Scan(&id)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create invitation: %w", err)
 	}
@@ -63,11 +63,11 @@ func (r *invitationRepo) UpdateInvitationStatus(ctx context.Context, id uuid.UUI
 
 // FetchInvitationByID retrieves an invitation by its ID.
 func (r *invitationRepo) FetchInvitationByID(ctx context.Context, id uuid.UUID) (*entities.Invitation, error) {
-	query := `SELECT invitation_id, inviting_user_id, invited_user_id,slot_id, status, created_at FROM invitations WHERE invitation_id = $1`
+	query := `SELECT invitation_id, inviting_user_id, invited_user_id,slot_id,game_id, status, created_at FROM invitations WHERE invitation_id = $1`
 	row := r.db.QueryRowContext(ctx, query, id)
 
 	var invitation entities.Invitation
-	err := row.Scan(&invitation.InvitationID, &invitation.InvitingUserID, &invitation.InvitedUserID, &invitation.SlotID, &invitation.Status, &invitation.CreatedAt)
+	err := row.Scan(&invitation.InvitationID, &invitation.InvitingUserID, &invitation.InvitedUserID, &invitation.SlotID, &invitation.GameID, &invitation.Status, &invitation.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil // No invitation found
@@ -80,7 +80,7 @@ func (r *invitationRepo) FetchInvitationByID(ctx context.Context, id uuid.UUID) 
 
 // FetchUserInvitations retrieves all invitations sent to or from a specific user.
 func (r *invitationRepo) FetchUserInvitations(ctx context.Context, userID uuid.UUID) ([]entities.Invitation, error) {
-	query := `SELECT invitation_id, inviting_user_id, invited_user_id, status, created_at FROM invitations WHERE inviting_user_id = $1 OR invited_user_id = $2`
+	query := `SELECT invitation_id, inviting_user_id, invited_user_id,game_id, status, created_at FROM invitations WHERE inviting_user_id = $1 OR invited_user_id = $2`
 	rows, err := r.db.QueryContext(ctx, query, userID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch user invitations: %w", err)
@@ -90,7 +90,7 @@ func (r *invitationRepo) FetchUserInvitations(ctx context.Context, userID uuid.U
 	var invitations []entities.Invitation
 	for rows.Next() {
 		var invitation entities.Invitation
-		if err := rows.Scan(&invitation.InvitationID, &invitation.InvitingUserID, &invitation.InvitedUserID, &invitation.Status, &invitation.CreatedAt); err != nil {
+		if err := rows.Scan(&invitation.InvitationID, &invitation.InvitingUserID, &invitation.InvitedUserID, &invitation.GameID, &invitation.Status, &invitation.CreatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan invitation row: %w", err)
 		}
 		invitations = append(invitations, invitation)
@@ -107,29 +107,30 @@ func (r *invitationRepo) FetchUserInvitations(ctx context.Context, userID uuid.U
 func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error) {
 	query := `
 		SELECT
-			i.invitation_id,
-			s.slot_id,
-			g.game_name,
-			s.slot_date,
-			s.start_time,
-			s.end_time,
-			ARRAY_AGG(u.username) AS booked_users,
-			inviter.username AS invited_by_username
+		   i.invitation_id,
+		   s.slot_id,
+		   g.game_id,
+		   g.game_name,
+		   s.slot_date,
+		   s.start_time,
+		   s.end_time,
+		   ARRAY_AGG(u.username) AS booked_users,
+		   inviter.username AS invited_by_username
 		FROM
-			invitations i
-			JOIN slots s ON i.slot_id = s.slot_id
-			JOIN games g ON s.game_id = g.game_id
-			LEFT JOIN bookings b ON s.slot_id = b.slot_id
-			LEFT JOIN users u ON b.user_id = u.user_id
-			JOIN users inviter ON i.inviting_user_id = inviter.user_id
+		   invitations i
+		   JOIN slots s ON i.slot_id = s.slot_id
+		   JOIN games g ON s.game_id = g.game_id
+		   LEFT JOIN bookings b ON s.slot_id = b.slot_id
+		   LEFT JOIN users u ON b.user_id = u.user_id
+		   JOIN users inviter ON i.inviting_user_id = inviter.user_id
 		WHERE
-			i.invited_user_id = $1
-			AND i.status = 'pending'
-			AND s.start_time > NOW()  
+		   i.invited_user_id = $1
+		   AND i.status = 'pending'
+		   AND s.start_time > NOW()  
 		GROUP BY
-			i.invitation_id, s.slot_id, g.game_name, s.slot_date, s.start_time, s.end_time, inviter.username
+		   i.invitation_id, s.slot_id, g.game_id, g.game_name, s.slot_date, s.start_time, s.end_time, inviter.username
 		ORDER BY
-			s.start_time;
+		   s.start_time;
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, userID)
@@ -146,6 +147,7 @@ func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID
 		err := rows.Scan(
 			&invitation.InvitationId,
 			&invitation.SlotId,
+			&invitation.GameId,
 			&invitation.GameName,
 			&invitation.Date,
 			&invitation.StartTime,
@@ -172,7 +174,7 @@ func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID
 // FetchInvitationByUserAndSlot retrieves an invitation based on user and slot id
 func (r *invitationRepo) FetchInvitationByUserAndSlot(ctx context.Context, invitingUserID uuid.UUID, invitedUserID uuid.UUID, slotID uuid.UUID) (*entities.Invitation, error) {
 	query := `
-		SELECT invitation_id, inviting_user_id, invited_user_id, slot_id
+		SELECT invitation_id, inviting_user_id, invited_user_id, slot_id,game_id
 		FROM invitations
 		WHERE inviting_user_id = $1 AND invited_user_id = $2 AND slot_id = $3
 	`
@@ -180,7 +182,7 @@ func (r *invitationRepo) FetchInvitationByUserAndSlot(ctx context.Context, invit
 	row := r.db.QueryRowContext(ctx, query, invitingUserID, invitedUserID, slotID)
 
 	var invitation entities.Invitation
-	err := row.Scan(&invitation.InvitationID, &invitation.InvitingUserID, &invitation.InvitedUserID, &invitation.SlotID)
+	err := row.Scan(&invitation.InvitationID, &invitation.InvitingUserID, &invitation.InvitedUserID, &invitation.SlotID, &invitation.GameID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// No matching invitation found

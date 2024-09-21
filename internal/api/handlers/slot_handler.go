@@ -27,12 +27,14 @@ func (s *SlotHandler) GetSlotByIdHandler(w http.ResponseWriter, r *http.Request)
 
 	slotId, err := uuid.Parse(gameIdStr)
 	if err != nil {
-		errs.NewInternalServerError("Couldn't parse game id").ToJSON(w)
+		logger.Logger.Errorw("Error parsing slot ID", "slotID", gameIdStr, "error", err, "method", r.Method, "time", time.Now())
+		errs.NewInternalServerError("Couldn't parse slot id").ToJSON(w)
 		return
 	}
 
 	slot, err := s.slotService.GetSlotByID(r.Context(), slotId)
 	if err != nil {
+		logger.Logger.Errorw("Error retrieving slot", "slotID", slotId.String(), "error", err, "method", r.Method, "time", time.Now())
 		errs.NewInternalServerError("Couldn't get slot").ToJSON(w)
 		return
 	}
@@ -41,10 +43,15 @@ func (s *SlotHandler) GetSlotByIdHandler(w http.ResponseWriter, r *http.Request)
 	jsonResponse := map[string]any{
 		"code":    http.StatusOK,
 		"message": "Success",
-		"data":    slot,
+		"slot":    slot,
 	}
-	json.NewEncoder(w).Encode(jsonResponse)
-	logger.Logger.Infow("Slot sent successfully", "method", r.Method, "time", time.Now())
+	if err := json.NewEncoder(w).Encode(jsonResponse); err != nil {
+		logger.Logger.Errorw("Error encoding response", "slotID", slotId.String(), "error", err, "method", r.Method, "time", time.Now())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	logger.Logger.Infow("Slot sent successfully", "slotID", slotId.String(), "method", r.Method, "time", time.Now())
 }
 
 func (s *SlotHandler) GetTodaySlotsHandler(w http.ResponseWriter, r *http.Request) {
@@ -53,12 +60,14 @@ func (s *SlotHandler) GetTodaySlotsHandler(w http.ResponseWriter, r *http.Reques
 
 	gameId, err := uuid.Parse(gameIdStr)
 	if err != nil {
+		logger.Logger.Errorw("Error parsing game ID", "gameID", gameIdStr, "error", err, "method", r.Method, "time", time.Now())
 		errs.NewInternalServerError("Couldn't parse game id").ToJSON(w)
 		return
 	}
 
 	slots, err := s.slotService.GetCurrentDayGameSlots(r.Context(), gameId)
 	if err != nil {
+		logger.Logger.Errorw("Error retrieving today's slots", "gameID", gameId.String(), "error", err, "method", r.Method, "time", time.Now())
 		errs.NewInternalServerError("Couldn't get slots").ToJSON(w)
 		return
 	}
@@ -67,9 +76,13 @@ func (s *SlotHandler) GetTodaySlotsHandler(w http.ResponseWriter, r *http.Reques
 	jsonResponse := map[string]any{
 		"code":    http.StatusOK,
 		"message": "Success",
-		"data":    slots,
+		"slots":   slots,
 	}
-	json.NewEncoder(w).Encode(jsonResponse)
-	logger.Logger.Infow("All slots for today sent successfully", "method", r.Method, "time", time.Now())
+	if err := json.NewEncoder(w).Encode(jsonResponse); err != nil {
+		logger.Logger.Errorw("Error encoding response", "gameID", gameId.String(), "error", err, "method", r.Method, "time", time.Now())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
+	logger.Logger.Infow("All slots for today sent successfully", "gameID", gameId.String(), "method", r.Method, "time", time.Now())
 }
