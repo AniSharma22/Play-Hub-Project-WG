@@ -136,7 +136,7 @@ func (g *GameHandler) GetGameByIdHandler(w http.ResponseWriter, r *http.Request)
 
 	game, err := g.gameService.GetGameByID(r.Context(), gameId)
 	if err != nil {
-		errs.NewInternalServerError("Failed to fetch game").ToJSON(w)
+		errs.NewNotFoundError("Failed to fetch game").ToJSON(w)
 		logger.Logger.Errorw("Failed to fetch game by ID", "method", r.Method, "game_id", gameId, "error", err, "time", time.Now())
 		return
 	}
@@ -200,7 +200,7 @@ func (g *GameHandler) DeleteGameHandler(w http.ResponseWriter, r *http.Request) 
 
 	err = g.gameService.DeleteGame(r.Context(), gameId)
 	if err != nil {
-		errs.NewInternalServerError("Failed to delete game").ToJSON(w)
+		errs.NewNotFoundError("Failed to delete game").ToJSON(w)
 		logger.Logger.Errorw("Failed to delete game", "method", r.Method, "game_id", gameId, "error", err, "time", time.Now())
 		return
 	}
