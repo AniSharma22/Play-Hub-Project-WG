@@ -55,20 +55,20 @@ func (b *BookingHandler) CreateBookingHandler(w http.ResponseWriter, r *http.Req
 
 	slotId, err := uuid.Parse(requestBody.SlotId)
 	if err != nil {
-		errs.NewInternalServerError("Couldn't parse slot ID").ToJSON(w)
+		errs.NewBadRequestError("Couldn't parse slot ID").ToJSON(w)
 		logger.Logger.Errorw("Failed to parse slot ID", "method", r.Method, "slotId", requestBody.SlotId, "error", err, "time", time.Now())
 		return
 	}
 	gameId, err := uuid.Parse(requestBody.GameId)
 	if err != nil {
-		errs.NewInternalServerError("Couldn't parse game ID").ToJSON(w)
+		errs.NewBadRequestError("Couldn't parse game ID").ToJSON(w)
 		logger.Logger.Errorw("Failed to parse game ID", "method", r.Method, "gameId", requestBody.GameId, "error", err, "time", time.Now())
 		return
 	}
 
 	userId, err := uuid.Parse(userIdStr)
 	if err != nil {
-		errs.NewInternalServerError("Couldn't parse user ID").ToJSON(w)
+		errs.NewBadRequestError("Couldn't parse user ID").ToJSON(w)
 		logger.Logger.Errorw("Failed to parse user ID", "method", r.Method, "userId", userIdStr, "error", err, "time", time.Now())
 		return
 	}
