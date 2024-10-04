@@ -42,7 +42,7 @@ func InitializeTables() {
 			game_name VARCHAR(255) NOT NULL,
 			min_players INT,
 			max_players INT,
-			instances INT,
+			instances INT,	
 			is_active BOOLEAN DEFAULT TRUE,
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -60,9 +60,10 @@ func InitializeTables() {
 
 		`CREATE TABLE IF NOT EXISTS bookings (
 			booking_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			game_id UUID REFERENCES games(game_id) ON DELETE CASCADE,
 			slot_id UUID REFERENCES slots(slot_id) ON DELETE CASCADE,
 			user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-			result VARCHAR(5) CHECK (result IN ('win', 'loss', 'pending')) DEFAULT 'pending',
+			result VARCHAR(10) CHECK (result IN ('win', 'loss', 'pending')) DEFAULT 'pending',
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		);`,
 
@@ -70,6 +71,7 @@ func InitializeTables() {
 			invitation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			inviting_user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
 			invited_user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+			game_id UUID REFERENCES games(game_id) ON DELETE CASCADE,
 			slot_id UUID REFERENCES slots(slot_id) ON DELETE CASCADE,
 			status VARCHAR(10) CHECK (status IN ('pending', 'accepted', 'declined')) DEFAULT 'pending',
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP

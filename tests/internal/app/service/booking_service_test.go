@@ -145,7 +145,7 @@ func TestBookingService_GetUpcomingBookings(t *testing.T) {
 	// Call the service method
 	bookings, err := bookingService.GetUpcomingBookings(context.TODO(), userID)
 
-	// Assert no error and correct return value
+	// Assert no errs and correct return value
 	assert.NoError(t, err)
 	assert.Equal(t, len(bookings), len(expectedBookings))
 }
@@ -168,7 +168,7 @@ func TestBookingService_GetBookingsToUpdateResult(t *testing.T) {
 	// Call the service method
 	bookings, err := bookingService.GetBookingsToUpdateResult(context.TODO(), userID)
 
-	// Assert no error and correct return value
+	// Assert no errs and correct return value
 	assert.NoError(t, err)
 	assert.Equal(t, len(bookings), len(expectedBookings))
 }
@@ -187,7 +187,7 @@ func TestBookingService_UpdateBookingResult(t *testing.T) {
 	// Call the service method
 	err := bookingService.UpdateBookingResult(context.TODO(), bookingID, result)
 
-	// Assert no error
+	// Assert no errs
 	assert.NoError(t, err)
 }
 
@@ -207,7 +207,7 @@ func TestBookingService_GetSlotBookedUsers(t *testing.T) {
 	// Call the service method
 	users, err := bookingService.GetSlotBookedUsers(context.TODO(), slotID)
 
-	// Assert no error and correct return value
+	// Assert no errs and correct return value
 	assert.NoError(t, err)
 	assert.Equal(t, len(users), len(expectedUsers))
 
@@ -233,7 +233,7 @@ func TestBookingService_GetBookingByUserAndSlotID(t *testing.T) {
 	// Call the service method
 	booking, err := bookingService.GetBookingByUserAndSlotID(context.TODO(), userID, slotID)
 
-	// Assert no error and correct return value
+	// Assert no errs and correct return value
 	assert.NoError(t, err)
 	assert.Equal(t, booking.BookingId, expectedBooking.BookingId)
 }

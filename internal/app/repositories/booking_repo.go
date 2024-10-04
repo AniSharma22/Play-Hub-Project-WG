@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"project2/internal/db"
 	"project2/internal/domain/entities"
 	interfaces "project2/internal/domain/interfaces/repository"
 	"project2/internal/models"
@@ -24,9 +25,16 @@ func NewBookingRepo(db *sql.DB) interfaces.BookingRepository {
 
 // CreateBooking inserts a new booking into the database and returns the created booking ID.
 func (r *bookingRepo) CreateBooking(ctx context.Context, booking *entities.Booking) (uuid.UUID, error) {
-	query := `INSERT INTO bookings (slot_id, user_id) VALUES ($1, $2) RETURNING booking_id`
+	//query := `INSERT INTO bookings (slot_id, user_id,game_id) VALUES ($1, $2, $3) RETURNING booking_id`
+
+	query := (&db.InsertQueryBuilder{
+		Table:       "bookings",
+		Columns:     "slot_id, user_id,game_id",
+		ReturnValue: "booking_id",
+	}).Build()
+
 	var id uuid.UUID
-	err := r.db.QueryRowContext(ctx, query, booking.SlotID, booking.UserID).Scan(&id)
+	err := r.db.QueryRowContext(ctx, query, booking.SlotID, booking.UserID, booking.GameID).Scan(&id)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create booking: %w", err)
 	}
@@ -35,11 +43,16 @@ func (r *bookingRepo) CreateBooking(ctx context.Context, booking *entities.Booki
 
 // FetchBookingByID retrieves a booking by its ID.
 func (r *bookingRepo) FetchBookingByID(ctx context.Context, id uuid.UUID) (*entities.Booking, error) {
-	query := `SELECT booking_id, slot_id, user_id, created_at FROM bookings WHERE booking_id = $1`
+	//query := `SELECT booking_id, slot_id, user_id,game_id, created_at FROM bookings WHERE booking_id = $1`
+	query := (&db.SelectQueryBuilder{
+		Columns: "booking_id, slot_id, user_id,game_id, created_at",
+		From:    "bookings",
+		Where:   "booking_id = $1",
+	}).Build()
 	row := r.db.QueryRowContext(ctx, query, id)
 
 	var booking entities.Booking
-	err := row.Scan(&booking.BookingID, &booking.SlotID, &booking.UserID, &booking.CreatedAt)
+	err := row.Scan(&booking.BookingID, &booking.SlotID, &booking.UserID, &booking.GameID, &booking.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil // No booking found
@@ -52,7 +65,13 @@ func (r *bookingRepo) FetchBookingByID(ctx context.Context, id uuid.UUID) (*enti
 
 // DeleteBookingByID removes a booking from the database by its ID.
 func (r *bookingRepo) DeleteBookingByID(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM bookings WHERE booking_id = $1`
+	//query := `DELETE FROM bookings WHERE booking_id = $1`
+
+	query := (&db.DeleteQueryBuilder{
+		Table: "bookings",
+		Where: "booking_id = $1",
+	}).Build()
+
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete booking: %w", err)
@@ -72,7 +91,13 @@ func (r *bookingRepo) DeleteBookingByID(ctx context.Context, id uuid.UUID) error
 
 // FetchBookingsByUserID retrieves all bookings associated with a specific user ID.
 func (r *bookingRepo) FetchBookingsByUserID(ctx context.Context, userID uuid.UUID) ([]entities.Booking, error) {
-	query := `SELECT booking_id, slot_id, user_id,result, created_at FROM bookings WHERE user_id = $1`
+	//query := `SELECT booking_id, slot_id, user_id,result,game_id, created_at FROM bookings WHERE user_id = $1`
+	query := (&db.SelectQueryBuilder{
+		Columns: "booking_id, slot_id, user_id,result,game_id, created_at",
+		From:    "bookings",
+		Where:   "user_id = $1",
+	}).Build()
+
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch bookings by user ID: %w", err)
@@ -82,14 +107,14 @@ func (r *bookingRepo) FetchBookingsByUserID(ctx context.Context, userID uuid.UUI
 	var bookings []entities.Booking
 	for rows.Next() {
 		var booking entities.Booking
-		if err := rows.Scan(&booking.BookingID, &booking.SlotID, &booking.UserID, &booking.Result, &booking.CreatedAt); err != nil {
+		if err := rows.Scan(&booking.BookingID, &booking.SlotID, &booking.UserID, &booking.Result, &booking.GameID, &booking.CreatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan booking row: %w", err)
 		}
 		bookings = append(bookings, booking)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over bookings: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over bookings: %w", err)
 	}
 
 	return bookings, nil
@@ -98,9 +123,15 @@ func (r *bookingRepo) FetchBookingsByUserID(ctx context.Context, userID uuid.UUI
 // FetchBookingsBySlotID retrieves all bookings for a specific slot ID.
 func (r *bookingRepo) FetchBookingsBySlotID(ctx context.Context, slotID uuid.UUID) ([]entities.Booking, error) {
 	// Define the query to fetch bookings by slot ID
-	query := `SELECT booking_id, slot_id, user_id,result, created_at 
-	          FROM bookings 
-	          WHERE slot_id = $1`
+	//query := `SELECT booking_id, slot_id, user_id,game_id,result, created_at
+	//          FROM bookings
+	//          WHERE slot_id = $1`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "booking_id, slot_id, user_id,game_id,result, created_at",
+		From:    "bookings",
+		Where:   "slot_id = $1",
+	}).Build()
 
 	// Execute the query
 	rows, err := r.db.QueryContext(ctx, query, slotID)
@@ -115,7 +146,7 @@ func (r *bookingRepo) FetchBookingsBySlotID(ctx context.Context, slotID uuid.UUI
 	// Iterate over the rows
 	for rows.Next() {
 		var booking entities.Booking
-		err := rows.Scan(&booking.BookingID, &booking.SlotID, &booking.UserID, &booking.Result, &booking.CreatedAt)
+		err := rows.Scan(&booking.BookingID, &booking.SlotID, &booking.UserID, &booking.GameID, &booking.Result, &booking.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan booking: %w", err)
 		}
@@ -124,7 +155,7 @@ func (r *bookingRepo) FetchBookingsBySlotID(ctx context.Context, slotID uuid.UUI
 
 	// Check for errors that occurred during iteration
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, fmt.Errorf("rows iteration errs: %w", err)
 	}
 
 	return bookings, nil
@@ -132,20 +163,32 @@ func (r *bookingRepo) FetchBookingsBySlotID(ctx context.Context, slotID uuid.UUI
 
 func (r *bookingRepo) FetchUpcomingBookingsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Bookings, error) {
 	// SQL query to join bookings, slots, and games tables and filter by user ID and future slot start time
-	query := `
-		SELECT 
-			g.game_name, 
-			s.slot_id,
-			s.slot_date AS date, 
-			s.start_time AS start_time, 
-			s.end_time AS end_time
-		FROM bookings b
-		JOIN slots s ON b.slot_id = s.slot_id
-		JOIN games g ON s.game_id = g.game_id
-		WHERE b.user_id = $1
-		  AND s.start_time > NOW()
-		ORDER BY s.start_time ASC
-	`
+	//query := `
+	//	SELECT
+	//	    b.booking_id,
+	//		g.game_id,
+	//		g.game_name,
+	//		s.slot_id,
+	//		s.slot_date AS date,
+	//		s.start_time AS start_time,
+	//		s.end_time AS end_time
+	//	FROM bookings b
+	//	JOIN slots s ON b.slot_id = s.slot_id
+	//	JOIN games g ON s.game_id = g.game_id
+	//	WHERE b.user_id = $1
+	//	  AND s.start_time > NOW()
+	//	ORDER BY s.start_time ASC
+	//`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "b.booking_id,g.game_id,g.game_name,s.slot_id,s.slot_date AS date,s.start_time AS start_time,s.end_time AS end_time",
+		From: "bookings b " +
+			"JOIN slots s ON b.slot_id = s.slot_id " +
+			"JOIN games g ON s.game_id = g.game_id",
+		Where:   "b.user_id = $1 AND s.start_time > NOW()",
+		OrderBy: "s.start_time ASC",
+	}).Build()
+
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch upcoming bookings by user ID: %w", err)
@@ -156,7 +199,9 @@ func (r *bookingRepo) FetchUpcomingBookingsByUserID(ctx context.Context, userID 
 	for rows.Next() {
 		var booking models.Bookings
 		var slotID uuid.UUID
-		err := rows.Scan(&booking.GameName, &slotID, &booking.Date, &booking.StartTime, &booking.EndTime)
+
+		// Scan the game_id along with other fields
+		err := rows.Scan(&booking.BookingId, &booking.GameId, &booking.GameName, &slotID, &booking.Date, &booking.StartTime, &booking.EndTime)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan booking: %w", err)
 		}
@@ -167,12 +212,11 @@ func (r *bookingRepo) FetchUpcomingBookingsByUserID(ctx context.Context, userID 
 			return nil, fmt.Errorf("failed to fetch booked users for slot %s: %w", slotID, err)
 		}
 		booking.BookedUsers = bookedUsers
-
 		bookings = append(bookings, booking)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, fmt.Errorf("rows iteration errs: %w", err)
 	}
 
 	return bookings, nil
@@ -181,11 +225,17 @@ func (r *bookingRepo) FetchUpcomingBookingsByUserID(ctx context.Context, userID 
 // UpdateBookingResult updates the result (win/loss) of the specified booking
 func (r *bookingRepo) UpdateBookingResult(ctx context.Context, bookingId uuid.UUID, result string) error {
 	// Define the SQL query to update the result
-	query := `
-		UPDATE bookings
-		SET result = $1
-		WHERE booking_id = $2
-	`
+	//query := `
+	//	UPDATE bookings
+	//	SET result = $1
+	//	WHERE booking_id = $2
+	//`
+
+	query := (&db.UpdateQueryBuilder{
+		Table: "bookings",
+		Set:   "result = $1",
+		Where: "booking_id = $2",
+	}).Build()
 
 	// Execute the query
 	_, err := r.db.ExecContext(ctx, query, result, bookingId)
@@ -198,25 +248,35 @@ func (r *bookingRepo) UpdateBookingResult(ctx context.Context, bookingId uuid.UU
 
 func (r *bookingRepo) FetchBookingsToUpdateResult(ctx context.Context, userID uuid.UUID) ([]models.Bookings, error) {
 	// Define the SQL query
-	query := `
-       SELECT
-           b.booking_id,
-           g.game_name,
-           s.slot_id,
-           s.slot_date,
-           s.start_time,
-           s.end_time
-       FROM
-           bookings b
-           JOIN slots s ON b.slot_id = s.slot_id
-           JOIN games g ON s.game_id = g.game_id
-       WHERE
-           b.user_id = $1
-           AND s.end_time < $2
-           AND b.result = $3  
-       ORDER BY
-           s.end_time DESC;
-    `
+	//query := `
+	//   SELECT
+	//       b.booking_id,
+	//       g.game_id,
+	//       g.game_name,
+	//       s.slot_id,
+	//       s.slot_date,
+	//       s.start_time,
+	//       s.end_time
+	//   FROM
+	//       bookings b
+	//       JOIN slots s ON b.slot_id = s.slot_id
+	//       JOIN games g ON s.game_id = g.game_id
+	//   WHERE
+	//       b.user_id = $1
+	//       AND s.end_time < $2
+	//       AND b.result = $3
+	//   ORDER BY
+	//       s.end_time DESC;
+	//`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "b.booking_id, g.game_id, g.game_name, s.slot_id, s.slot_date, s.start_time, s.end_time",
+		From: "bookings b " +
+			"JOIN slots s ON b.slot_id = s.slot_id " +
+			"JOIN games g ON s.game_id = g.game_id",
+		Where:   "b.user_id = $1 AND s.end_time < $2 AND b.result = $3 ",
+		OrderBy: "s.end_time DESC",
+	}).Build()
 
 	// Execute the query with the "pending" status
 	rows, err := r.db.QueryContext(ctx, query, userID, time.Now(), "pending")
@@ -236,6 +296,7 @@ func (r *bookingRepo) FetchBookingsToUpdateResult(ctx context.Context, userID uu
 		// Scan the row into the booking structure
 		err := rows.Scan(
 			&booking.BookingId,
+			&booking.GameId,
 			&booking.GameName,
 			&slotID,
 			&booking.Date,
@@ -259,7 +320,7 @@ func (r *bookingRepo) FetchBookingsToUpdateResult(ctx context.Context, userID uu
 
 	// Check for any errors encountered during iteration
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, fmt.Errorf("rows iteration errs: %w", err)
 	}
 
 	return bookings, nil
@@ -268,12 +329,19 @@ func (r *bookingRepo) FetchBookingsToUpdateResult(ctx context.Context, userID uu
 // FetchSlotBookedUsers returns a slice of usernames of all users who have booked the given slot
 func (r *bookingRepo) FetchSlotBookedUsers(ctx context.Context, slotId uuid.UUID) ([]string, error) {
 	// Define the SQL query to fetch usernames
-	query := `
-		SELECT u.username
-		FROM bookings b
-		INNER JOIN users u ON b.user_id = u.user_id
-		WHERE b.slot_id = $1
-	`
+	//query := `
+	//	SELECT u.username
+	//	FROM bookings b
+	//	INNER JOIN users u ON b.user_id = u.user_id
+	//	WHERE b.slot_id = $1
+	//`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "u.username",
+		From: "bookings b " +
+			"INNER JOIN users u ON b.user_id = u.user_id",
+		Where: "b.slot_id = $1",
+	}).Build()
 
 	// Execute the query
 	rows, err := r.db.QueryContext(ctx, query, slotId)
@@ -294,30 +362,38 @@ func (r *bookingRepo) FetchSlotBookedUsers(ctx context.Context, slotId uuid.UUID
 		usernames = append(usernames, username)
 	}
 
-	// Check for any error that occurred during iteration
+	// Check for any errs that occurred during iteration
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred during rows iteration: %w", err)
+		return nil, fmt.Errorf("errs occurred during rows iteration: %w", err)
 	}
 
 	return usernames, nil
 }
 
 func (r *bookingRepo) FetchBookingBySlotAndUserId(ctx context.Context, slotId uuid.UUID, userID uuid.UUID) (models.Bookings, error) {
-	query := `
-       SELECT
-          b.booking_id,
-          g.game_name,
-          s.slot_date,
-          s.start_time,
-          s.end_time
-       FROM
-          bookings b
-          JOIN slots s ON b.slot_id = s.slot_id
-          JOIN games g ON s.game_id = g.game_id
-       WHERE
-          b.slot_id = $1
-          AND b.user_id = $2
-    `
+	//query := `
+	//   SELECT
+	//      b.booking_id,
+	//      g.game_id,
+	//      g.game_name,
+	//      s.slot_date,
+	//      s.start_time,
+	//      s.end_time
+	//   FROM
+	//      bookings b
+	//      JOIN slots s ON b.slot_id = s.slot_id
+	//      JOIN games g ON s.game_id = g.game_id
+	//   WHERE
+	//      b.slot_id = $1
+	//      AND b.user_id = $2
+	//`
+	query := (&db.SelectQueryBuilder{
+		Columns: "b.booking_id, g.game_id, g.game_name, s.slot_date, s.start_time, s.end_time",
+		From: "bookings b " +
+			"JOIN slots s ON b.slot_id = s.slot_id " +
+			"JOIN games g ON s.game_id = g.game_id",
+		Where: "b.slot_id = $1 AND b.user_id = $2",
+	}).Build()
 
 	row := r.db.QueryRowContext(ctx, query, slotId, userID)
 
@@ -325,6 +401,7 @@ func (r *bookingRepo) FetchBookingBySlotAndUserId(ctx context.Context, slotId uu
 
 	err := row.Scan(
 		&booking.BookingId,
+		&booking.GameId,
 		&booking.GameName,
 		&booking.Date,
 		&booking.StartTime,

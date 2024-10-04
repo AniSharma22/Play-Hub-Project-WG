@@ -7,6 +7,7 @@ import (
 	"project2/internal/domain/entities"
 	repository_interfaces "project2/internal/domain/interfaces/repository"
 	service_interfaces "project2/internal/domain/interfaces/service"
+	"project2/pkg/errs"
 	"sync"
 	"time"
 )
@@ -32,6 +33,9 @@ func (s *SlotService) GetCurrentDayGameSlots(ctx context.Context, gameID uuid.UU
 		return nil, fmt.Errorf("failed to fetch slots for game ID %s on date %s: %w", gameID, time.Now().Format("2006-03-04"), err)
 	}
 
+	if len(slots) == 0 {
+		return nil, fmt.Errorf("no slots found for game ID %s for current day: %w", gameID, errs.ErrGameNotFound)
+	}
 	return slots, nil
 }
 func (s *SlotService) GetSlotByID(ctx context.Context, slotID uuid.UUID) (*entities.Slot, error) {

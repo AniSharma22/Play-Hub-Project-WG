@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"project2/internal/db"
 	"project2/internal/domain/entities"
 	interfaces "project2/internal/domain/interfaces/repository"
 	"time"
@@ -23,7 +24,14 @@ func NewSlotRepo(db *sql.DB) interfaces.SlotRepository {
 
 // FetchSlotByID retrieves a slot by its ID.
 func (r *slotRepo) FetchSlotByID(ctx context.Context, id uuid.UUID) (*entities.Slot, error) {
-	query := `SELECT slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at FROM slots WHERE slot_id = $1`
+	//query := `SELECT slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at FROM slots WHERE slot_id = $1`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at",
+		From:    "slots",
+		Where:   "slot_id = $1",
+	}).Build()
+
 	row := r.db.QueryRowContext(ctx, query, id)
 
 	var slot entities.Slot
@@ -40,7 +48,14 @@ func (r *slotRepo) FetchSlotByID(ctx context.Context, id uuid.UUID) (*entities.S
 
 // CreateSlot inserts a new slot into the database and returns the created slot ID.
 func (r *slotRepo) CreateSlot(ctx context.Context, slot *entities.Slot) (uuid.UUID, error) {
-	query := `INSERT INTO slots (game_id, slot_date, start_time, end_time, is_booked) VALUES ($1, $2, $3, $4, $5) RETURNING slot_id`
+	//query := `INSERT INTO slots (game_id, slot_date, start_time, end_time, is_booked) VALUES ($1, $2, $3, $4, $5) RETURNING slot_id`
+
+	query := (&db.InsertQueryBuilder{
+		Table:       "slots",
+		Columns:     "game_id, slot_date, start_time, end_time, is_booked",
+		ReturnValue: "slot_id",
+	}).Build()
+
 	var id uuid.UUID
 	err := r.db.QueryRowContext(ctx, query, slot.GameID, slot.Date, slot.StartTime, slot.EndTime, slot.IsBooked).Scan(&id)
 	if err != nil {
@@ -51,7 +66,13 @@ func (r *slotRepo) CreateSlot(ctx context.Context, slot *entities.Slot) (uuid.UU
 
 // DeleteSlotByID removes a slot from the database by its ID.
 func (r *slotRepo) DeleteSlotByID(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM slots WHERE slot_id = $1`
+	//query := `DELETE FROM slots WHERE slot_id = $1`
+
+	query := (&db.DeleteQueryBuilder{
+		Table: "slots",
+		Where: "slot_id = $1",
+	}).Build()
+
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete slot: %w", err)
@@ -72,7 +93,14 @@ func (r *slotRepo) DeleteSlotByID(ctx context.Context, id uuid.UUID) error {
 // FetchSlotsByDate retrieves all slots for a specific date.
 func (r *slotRepo) FetchSlotsByDate(ctx context.Context, date time.Time) ([]entities.Slot, error) {
 	dateStr := date.Format("2006-01-02")
-	query := `SELECT slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at FROM slots WHERE slot_date::date = $1`
+	//query := `SELECT slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at FROM slots WHERE slot_date::date = $1`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at",
+		From:    "slots",
+		Where:   "slot_date::date = $1",
+	}).Build()
+
 	rows, err := r.db.QueryContext(ctx, query, dateStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch slots by date: %w", err)
@@ -89,7 +117,7 @@ func (r *slotRepo) FetchSlotsByDate(ctx context.Context, date time.Time) ([]enti
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over slots: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over slots: %w", err)
 	}
 
 	return slots, nil
@@ -98,7 +126,14 @@ func (r *slotRepo) FetchSlotsByDate(ctx context.Context, date time.Time) ([]enti
 // FetchSlotByDateAndTime retrieves a slot by its date and start time.
 func (r *slotRepo) FetchSlotByDateAndTime(ctx context.Context, date time.Time, startTime time.Time) (*entities.Slot, error) {
 	dateStr := date.Format("2006-01-02")
-	query := `SELECT slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at FROM slots WHERE slot_date::date = $1 AND start_time = $2`
+	//query := `SELECT slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at FROM slots WHERE slot_date::date = $1 AND start_time = $2`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at",
+		From:    "slots",
+		Where:   "slot_date::date = $1 AND start_time = $2",
+	}).Build()
+
 	row := r.db.QueryRowContext(ctx, query, dateStr, startTime)
 
 	var slot entities.Slot
@@ -115,7 +150,14 @@ func (r *slotRepo) FetchSlotByDateAndTime(ctx context.Context, date time.Time, s
 
 // FetchSlotsByGameID retrieves all slots associated with a specific game ID.
 func (r *slotRepo) FetchSlotsByGameID(ctx context.Context, gameID uuid.UUID) ([]entities.Slot, error) {
-	query := `SELECT slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at FROM slots WHERE game_id = $1`
+	//query := `SELECT slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at FROM slots WHERE game_id = $1`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at",
+		From:    "slots",
+		Where:   "game_id = $1",
+	}).Build()
+
 	rows, err := r.db.QueryContext(ctx, query, gameID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch slots by game ID: %w", err)
@@ -132,7 +174,7 @@ func (r *slotRepo) FetchSlotsByGameID(ctx context.Context, gameID uuid.UUID) ([]
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over slots: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over slots: %w", err)
 	}
 
 	return slots, nil
@@ -143,9 +185,15 @@ func (r *slotRepo) FetchSlotsByGameIDAndDate(ctx context.Context, gameID uuid.UU
 	// Convert the Go date to a string in the format YYYY-MM-DD for PostgresSQL comparison
 	dateStr := date.Format("2006-01-02")
 
-	query := `SELECT slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at 
-	          FROM slots 
-	          WHERE game_id = $1 AND slot_date::date = $2`
+	//query := `SELECT slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at
+	//          FROM slots
+	//          WHERE game_id = $1 AND slot_date::date = $2`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at",
+		From:    "slots",
+		Where:   "game_id = $1 AND slot_date::date = $2",
+	}).Build()
 
 	rows, err := r.db.QueryContext(ctx, query, gameID, dateStr)
 	if err != nil {
@@ -164,7 +212,7 @@ func (r *slotRepo) FetchSlotsByGameIDAndDate(ctx context.Context, gameID uuid.UU
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, fmt.Errorf("rows iteration errs: %w", err)
 	}
 
 	return slots, nil
@@ -173,9 +221,15 @@ func (r *slotRepo) FetchSlotsByGameIDAndDate(ctx context.Context, gameID uuid.UU
 // UpdateSlotStatus updates the booking status of a specific slot.
 func (r *slotRepo) UpdateSlotStatus(ctx context.Context, slotID uuid.UUID, isBooked bool) error {
 	// Define the SQL query to update the is_booked status of the slot
-	query := `UPDATE slots 
-	          SET is_booked = $1 
-	          WHERE slot_id = $2`
+	//query := `UPDATE slots
+	//          SET is_booked = $1
+	//          WHERE slot_id = $2`
+
+	query := (&db.UpdateQueryBuilder{
+		Table: "slots",
+		Set:   "is_booked = $1 ",
+		Where: "slot_id = $2",
+	}).Build()
 
 	// Execute the query with the provided slotID and isBooked status
 	_, err := r.db.ExecContext(ctx, query, isBooked, slotID)

@@ -7,7 +7,7 @@ import (
 )
 
 type InvitationService interface {
-	MakeInvitation(ctx context.Context, invitingUserID, invitedUserID uuid.UUID, slotId uuid.UUID) (uuid.UUID, error)
+	MakeInvitation(ctx context.Context, invitingUserID, invitedUserID uuid.UUID, slotId uuid.UUID, gameID uuid.UUID) (uuid.UUID, error)
 	AcceptInvitation(ctx context.Context, invitationID uuid.UUID) error
 	RejectInvitation(ctx context.Context, invitationID uuid.UUID) error
 	GetAllPendingInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error)

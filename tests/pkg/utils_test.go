@@ -19,7 +19,7 @@ func TestGetHashedPassword(t *testing.T) {
 
 	hash, err := utils.GetHashedPassword([]byte(password))
 	if err != nil {
-		t.Errorf("GetHashedPassword returned an error: %v", err)
+		t.Errorf("GetHashedPassword returned an errs: %v", err)
 	}
 
 	if len(hash) == 0 {
@@ -33,7 +33,7 @@ func TestVerifyPassword(t *testing.T) {
 
 	hash, err := utils.GetHashedPassword([]byte(password))
 	if err != nil {
-		t.Fatalf("GetHashedPassword returned an error: %v", err)
+		t.Fatalf("GetHashedPassword returned an errs: %v", err)
 	}
 
 	if !utils.VerifyPassword([]byte(password), hash) {

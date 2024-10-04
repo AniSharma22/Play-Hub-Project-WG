@@ -8,6 +8,7 @@ import (
 	repository_interfaces "project2/internal/domain/interfaces/repository"
 	service_interfaces "project2/internal/domain/interfaces/service"
 	"project2/internal/models"
+	"project2/pkg/errs"
 	"time"
 )
 
@@ -25,44 +26,45 @@ func NewBookingService(bookRepo repository_interfaces.BookingRepository, slotSer
 	}
 }
 
-func (b *BookingService) MakeBooking(ctx context.Context, userID, slotID uuid.UUID) error {
+func (b *BookingService) MakeBooking(ctx context.Context, userID, slotID, gameID uuid.UUID) error {
 	// Fetch the slot and validate
 	slot, err := b.SlotService.GetSlotByID(ctx, slotID)
 	if err != nil {
-		return fmt.Errorf("failed to get slot details: %w", err)
+		return fmt.Errorf("failed to get slot details: %w", errs.ErrDbError)
 	}
 	if slot.IsBooked {
-		return fmt.Errorf("slot is already booked")
+		return fmt.Errorf("slot is already booked: %w", errs.ErrAlreadyExists)
 	}
 	if slot.StartTime.Before(time.Now()) {
-		return fmt.Errorf("slot has already passed")
+		return fmt.Errorf("slot has already passed: %w", errs.ErrSlotPassed)
 	}
 
 	// Check if the user is already booked
 	if booking, _ := b.bookRepo.FetchBookingBySlotAndUserId(ctx, slotID, userID); booking.BookingId != uuid.Nil {
-		return fmt.Errorf("user is already booked in this slot")
+		return fmt.Errorf("user is already booked in this slot: %w", errs.ErrUserAlreadyBooked)
 	}
 
 	// Create new booking
-	newBooking := &entities.Booking{SlotID: slotID, UserID: userID}
+	newBooking := &entities.Booking{SlotID: slotID, UserID: userID, GameID: gameID}
+	fmt.Println(newBooking)
 	if _, err := b.bookRepo.CreateBooking(ctx, newBooking); err != nil {
-		return fmt.Errorf("failed to create booking: %w", err)
+		return fmt.Errorf("failed to create booking: %w", errs.ErrDbError)
 	}
 
 	// Fetch game and current bookings
 	game, err := b.GameService.GetGameByID(ctx, slot.GameID)
 	if err != nil {
-		return fmt.Errorf("failed to get game details: %w", err)
+		return fmt.Errorf("failed to get game details: %w", errs.ErrServiceError)
 	}
 	bookings, err := b.bookRepo.FetchBookingsBySlotID(ctx, slotID)
 	if err != nil {
-		return fmt.Errorf("failed to fetch bookings: %w", err)
+		return fmt.Errorf("failed to fetch bookings: %w", errs.ErrDbError)
 	}
 
 	// Mark slot as booked if the max players are reached
 	if len(bookings) == game.MaxPlayers {
 		if err := b.SlotService.MarkSlotAsBooked(ctx, slotID); err != nil {
-			return fmt.Errorf("failed to update slot status: %w", err)
+			return fmt.Errorf("failed to update slot status: %w", errs.ErrServiceError)
 		}
 	}
 

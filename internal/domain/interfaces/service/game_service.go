@@ -11,5 +11,5 @@ type GameService interface {
 	GetAllGames(ctx context.Context) ([]entities.Game, error)
 	CreateGame(ctx context.Context, game *entities.Game) (uuid.UUID, error)
 	DeleteGame(ctx context.Context, id uuid.UUID) error
-	UpdateGameStatus(ctx context.Context, id uuid.UUID, isActive bool) error
+	UpdateGameStatus(ctx context.Context, id uuid.UUID) error
 }

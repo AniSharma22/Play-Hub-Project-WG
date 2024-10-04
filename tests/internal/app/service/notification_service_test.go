@@ -41,7 +41,7 @@ func TestNotificationService_GetUserNotifications(t *testing.T) {
 			mockSetup: func() {
 				mockNotificationRepo.EXPECT().
 					FetchUserNotifications(ctx, userId).
-					Return(nil, errors.New("test error"))
+					Return(nil, errors.New("test errs"))
 			},
 			mockOutput:    nil,
 			expectedError: true,

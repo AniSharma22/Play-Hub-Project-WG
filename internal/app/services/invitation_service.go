@@ -9,6 +9,7 @@ import (
 	repository_interfaces "project2/internal/domain/interfaces/repository"
 	service_interfaces "project2/internal/domain/interfaces/service"
 	"project2/internal/models"
+	"project2/pkg/errs"
 	"project2/pkg/globals"
 	"sync"
 	"time"
@@ -31,11 +32,11 @@ func NewInvitationService(invitationRepo repository_interfaces.InvitationReposit
 }
 
 // MakeInvitation creates a new invitation.
-func (s *InvitationService) MakeInvitation(ctx context.Context, invitingUserID, invitedUserID uuid.UUID, slotId uuid.UUID) (uuid.UUID, error) {
+func (s *InvitationService) MakeInvitation(ctx context.Context, invitingUserID, invitedUserID uuid.UUID, slotId uuid.UUID, gameID uuid.UUID) (uuid.UUID, error) {
 
 	// Check if the user is trying to invite themselves
 	if invitingUserID == invitedUserID {
-		return uuid.Nil, errors.New("cannot invite yourself to a slot")
+		return uuid.Nil, fmt.Errorf("cannot invite yourself to a slot: %w", errs.ErrSelfInviteError)
 	}
 
 	// Check if the inviting user has already invited the same user for the same slot
@@ -44,8 +45,9 @@ func (s *InvitationService) MakeInvitation(ctx context.Context, invitingUserID, 
 		return uuid.Nil, err
 	}
 
+	// An invitation to the same user has been created in the past
 	if existingInvitation != nil {
-		return uuid.Nil, errors.New("invitation already exists for this slot")
+		return uuid.Nil, fmt.Errorf("invitation already exists for this slot: %w", errs.ErrAlreadyExists)
 	}
 
 	// Check if the slot is already booked
@@ -54,20 +56,21 @@ func (s *InvitationService) MakeInvitation(ctx context.Context, invitingUserID, 
 		return uuid.Nil, err
 	}
 	if slot.IsBooked {
-		return uuid.Nil, errors.New("slot is already booked")
+		return uuid.Nil, fmt.Errorf("slot is already booked: %w", errs.ErrSlotFullyBookedError)
 	}
 
 	// Check if the slot time has already passed
 	location, _ := time.LoadLocation("Asia/Kolkata")
 	currentTime := time.Now().In(location)
 	if slot.EndTime.Before(currentTime) {
-		return uuid.Nil, errors.New("cannot invite to a slot that has already passed")
+		return uuid.Nil, fmt.Errorf("cannot invite to a slot that has already passed: %w", errs.ErrSlotPassed)
 	}
 
 	invitation := &entities.Invitation{
 		InvitingUserID: invitingUserID,
 		InvitedUserID:  invitedUserID,
 		SlotID:         slotId,
+		GameID:         gameID,
 	}
 
 	// Create the invitation in the repository
@@ -82,23 +85,20 @@ func (s *InvitationService) MakeInvitation(ctx context.Context, invitingUserID, 
 // AcceptInvitation sets the status of an invitation to 'accepted'.
 func (s *InvitationService) AcceptInvitation(ctx context.Context, invitationID uuid.UUID) error {
 
-	fmt.Println(invitationID)
 	invitation, err := s.invitationRepo.FetchInvitationByID(ctx, invitationID)
 	if err != nil {
 		return errors.New("failed to fetch invitation")
 	}
-	fmt.Println(invitation)
 	slot, err := s.slotService.GetSlotByID(ctx, invitation.SlotID)
 	if err != nil {
 		return errors.New("failed to fetch slot")
 	}
-	fmt.Println(slot.IsBooked)
 	if slot.IsBooked {
 		err = s.invitationRepo.DeleteInvitationByID(ctx, invitationID)
 		if err != nil {
 			return errors.New("failed to delete invitation")
 		}
-		return errors.New("slot is already booked")
+		return fmt.Errorf("slot is already booked: %w", errs.ErrSlotFullyBookedError)
 	}
 
 	booking, err := s.bookingService.GetBookingByUserAndSlotID(ctx, invitation.InvitedUserID, invitation.SlotID)
@@ -110,10 +110,10 @@ func (s *InvitationService) AcceptInvitation(ctx context.Context, invitationID u
 		if err != nil {
 			return errors.New("failed to delete invitation")
 		}
-		return errors.New("you already have this slot booked")
+		return fmt.Errorf("you already have this slot booked: %w", errs.ErrUserAlreadyBooked)
 	}
 
-	err = s.bookingService.MakeBooking(ctx, globals.ActiveUser, invitation.SlotID)
+	err = s.bookingService.MakeBooking(ctx, globals.ActiveUser, invitation.SlotID, invitation.GameID)
 	if err != nil {
 		return errors.New("failed to booking invitation")
 	}

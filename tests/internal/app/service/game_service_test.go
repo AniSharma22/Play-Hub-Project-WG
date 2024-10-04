@@ -34,7 +34,7 @@ func TestGameService_GetGameByID(t *testing.T) {
 	t.Run("Error fetching game", func(t *testing.T) {
 		mockGameRepo.EXPECT().
 			FetchGameByID(gomock.Any(), gameID).
-			Return(nil, errors.New("error")).
+			Return(nil, errors.New("errs")).
 			Times(1)
 
 		game, err := gameService.GetGameByID(context.Background(), gameID)
@@ -68,7 +68,7 @@ func TestGameService_GetAllGames(t *testing.T) {
 	t.Run("Error fetching games", func(t *testing.T) {
 		mockGameRepo.EXPECT().
 			FetchAllGames(gomock.Any()).
-			Return(nil, errors.New("error")).
+			Return(nil, errors.New("errs")).
 			Times(1)
 
 		games, err := gameService.GetAllGames(context.Background())
@@ -97,7 +97,7 @@ func TestGameService_DeleteGame(t *testing.T) {
 	t.Run("Error deleting game", func(t *testing.T) {
 		mockGameRepo.EXPECT().
 			DeleteGame(gomock.Any(), gameID).
-			Return(errors.New("error")).
+			Return(errors.New("errs")).
 			Times(1)
 
 		err := gameService.DeleteGame(context.Background(), gameID)
@@ -132,11 +132,11 @@ func TestGameService_CreateGame(t *testing.T) {
 			mockSetup: func() {
 				mockGameRepo.EXPECT().
 					CreateGame(gomock.Any(), gomock.Any()).
-					Return(uuid.Nil, errors.New("creation error")).
+					Return(uuid.Nil, errors.New("creation errs")).
 					Times(1)
 			},
 			expectedID:    uuid.Nil,
-			expectedError: fmt.Errorf("failed to create game: creation error"),
+			expectedError: fmt.Errorf("failed to create game: creation errs"),
 		},
 	}
 
@@ -189,10 +189,10 @@ func TestUpdateGameStatus(t *testing.T) {
 			mockSetup: func() {
 				mockGameRepo.EXPECT().
 					FetchGameByID(gomock.Any(), gomock.Any()).
-					Return(nil, errors.New("db error")).
+					Return(nil, errors.New("db errs")).
 					Times(1)
 			},
-			expectedError: "failed to fetch game by ID: db error",
+			expectedError: "failed to fetch game by ID: db errs",
 		},
 		{
 			name:   "Game Not Found",
@@ -218,10 +218,10 @@ func TestUpdateGameStatus(t *testing.T) {
 
 				mockGameRepo.EXPECT().
 					UpdateGameStatus(gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(errors.New("update error")).
+					Return(errors.New("update errs")).
 					Times(1)
 			},
-			expectedError: "failed to update game status: update error",
+			expectedError: "failed to update game status: update errs",
 		},
 	}
 
