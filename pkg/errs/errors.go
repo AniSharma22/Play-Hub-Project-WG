@@ -7,20 +7,22 @@ import (
 )
 
 var (
-	ErrUserNotFound      = errors.New("user not found")
-	ErrInvalidPassword   = errors.New("invalid password")
-	ErrEmailExists       = errors.New("email already exists")
-	ErrGameNotFound      = errors.New("game not found")
-	ErrDbError           = errors.New("db error")
-	ErrAlreadyExists     = errors.New("already exists")
-	ErrSlotPassed        = errors.New("slot passed")
-	ErrUserAlreadyBooked = errors.New("user already booked")
-	ErrServiceError      = errors.New("service error")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrInvalidPassword      = errors.New("invalid password")
+	ErrEmailExists          = errors.New("email already exists")
+	ErrGameNotFound         = errors.New("game not found")
+	ErrDbError              = errors.New("db error")
+	ErrAlreadyExists        = errors.New("already exists")
+	ErrSlotPassed           = errors.New("slot passed")
+	ErrUserAlreadyBooked    = errors.New("user already booked")
+	ErrServiceError         = errors.New("service error")
+	ErrSelfInviteError      = errors.New("can't invite self")
+	ErrSlotFullyBookedError = errors.New("slot is already booked")
 )
 
 type AppError struct {
 	error      `json:"-"`
-	StatusCode int    `json:"-"`
+	StatusCode int    `json:"error_code"`
 	Message    string `json:"message"`
 }
 

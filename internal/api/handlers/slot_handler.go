@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"encoding/json"
+	"errors"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"net/http"
 	service_interfaces "project2/internal/domain/interfaces/service"
 	"project2/pkg/errs"
 	"project2/pkg/logger"
+	"project2/pkg/utils"
 	"time"
 )
 
@@ -28,14 +29,14 @@ func (s *SlotHandler) GetSlotByIdHandler(w http.ResponseWriter, r *http.Request)
 	slotId, err := uuid.Parse(gameIdStr)
 	if err != nil {
 		logger.Logger.Errorw("Error parsing slot ID", "slotID", gameIdStr, "error", err, "method", r.Method, "time", time.Now())
-		errs.NewInternalServerError("Couldn't parse slot id").ToJSON(w)
+		errs.ValidationError("Couldn't parse slot id").ToJson2(w)
 		return
 	}
 
 	slot, err := s.slotService.GetSlotByID(r.Context(), slotId)
 	if err != nil {
 		logger.Logger.Errorw("Error retrieving slot", "slotID", slotId.String(), "error", err, "method", r.Method, "time", time.Now())
-		errs.NewInternalServerError("Couldn't get slot").ToJSON(w)
+		errs.DBError("Couldn't get slot").ToJson2(w)
 		return
 	}
 
@@ -45,12 +46,9 @@ func (s *SlotHandler) GetSlotByIdHandler(w http.ResponseWriter, r *http.Request)
 		"message": "Success",
 		"slot":    slot,
 	}
-	if err := json.NewEncoder(w).Encode(jsonResponse); err != nil {
-		logger.Logger.Errorw("Error encoding response", "slotID", slotId.String(), "error", err, "method", r.Method, "time", time.Now())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err = utils.JsonEncoder(w, jsonResponse); err != nil {
 		return
 	}
-
 	logger.Logger.Infow("Slot sent successfully", "slotID", slotId.String(), "method", r.Method, "time", time.Now())
 }
 
@@ -61,14 +59,19 @@ func (s *SlotHandler) GetTodaySlotsHandler(w http.ResponseWriter, r *http.Reques
 	gameId, err := uuid.Parse(gameIdStr)
 	if err != nil {
 		logger.Logger.Errorw("Error parsing game ID", "gameID", gameIdStr, "error", err, "method", r.Method, "time", time.Now())
-		errs.NewInternalServerError("Couldn't parse game id").ToJSON(w)
+		errs.ValidationError("Couldn't parse game id").ToJson2(w)
 		return
 	}
 
 	slots, err := s.slotService.GetCurrentDayGameSlots(r.Context(), gameId)
 	if err != nil {
+		if errors.Is(err, errs.ErrGameNotFound) {
+			logger.Logger.Errorw("No slots found for the given game id", "gameID", gameId.String(), "error", err, "method", r.Method, "time", time.Now())
+			errs.InvalidRequestError("No slots found for the game").ToJson2(w)
+			return
+		}
 		logger.Logger.Errorw("Error retrieving today's slots", "gameID", gameId.String(), "error", err, "method", r.Method, "time", time.Now())
-		errs.NewInternalServerError("Couldn't get slots").ToJSON(w)
+		errs.DBError("Couldn't get slots").ToJson2(w)
 		return
 	}
 
@@ -78,11 +81,8 @@ func (s *SlotHandler) GetTodaySlotsHandler(w http.ResponseWriter, r *http.Reques
 		"message": "Success",
 		"slots":   slots,
 	}
-	if err := json.NewEncoder(w).Encode(jsonResponse); err != nil {
-		logger.Logger.Errorw("Error encoding response", "gameID", gameId.String(), "error", err, "method", r.Method, "time", time.Now())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err = utils.JsonEncoder(w, jsonResponse); err != nil {
 		return
 	}
-
 	logger.Logger.Infow("All slots for today sent successfully", "gameID", gameId.String(), "method", r.Method, "time", time.Now())
 }

@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
@@ -13,6 +14,8 @@ import (
 	"project2/internal/config"
 	"project2/internal/domain/entities"
 	repository_interfaces "project2/internal/domain/interfaces/repository"
+	"project2/pkg/errs"
+	"project2/pkg/logger"
 	"strings"
 	"time"
 )
@@ -89,12 +92,23 @@ func GetIP(r *http.Request) string {
 }
 
 func InsertAllSlots(ctx context.Context, slotRepo repository_interfaces.SlotRepository, gameRepo repository_interfaces.GameRepository) error {
-	today := time.Now().Truncate(24 * time.Hour)
+
 	location, err := time.LoadLocation("Asia/Kolkata")
 	if err != nil {
 		log.Fatalf("Failed to load location: %v", err)
 	}
 
+	// Get the current time in the desired location
+	nowInLocation := time.Now().In(location)
+
+	// Set time to midnight for the current date
+	today := time.Date(
+		nowInLocation.Year(),
+		nowInLocation.Month(),
+		nowInLocation.Day(),
+		0, 0, 0, 0,
+		location,
+	)
 	// Fetch all games
 	games, err := gameRepo.FetchAllGames(ctx)
 	if err != nil {
@@ -111,7 +125,6 @@ func InsertAllSlots(ctx context.Context, slotRepo repository_interfaces.SlotRepo
 		if err != nil {
 			return fmt.Errorf("errs checking existing slots for game %s: %w", game.GameName, err)
 		}
-
 		// If no slots exist, create new slots
 		if len(existingSlots) == 0 {
 			for current := startTime; current.Before(endTime); current = current.Add(20 * time.Minute) {
@@ -135,6 +148,17 @@ func InsertAllSlots(ctx context.Context, slotRepo repository_interfaces.SlotRepo
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func JsonEncoder(w http.ResponseWriter, jsonResponse any) error {
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(jsonResponse)
+	if err != nil {
+		logger.Logger.Errorw("Some unexpected error occurred while encoding the response", "error", err, "response", jsonResponse)
+		errs.UnexpectedError("Some unexpected error occurred while encoding the response").ToJson2(w)
+		return err
 	}
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"project2/internal/db"
 	"project2/internal/domain/entities"
 	interfaces "project2/internal/domain/interfaces/repository"
 	"project2/internal/models"
@@ -22,7 +23,14 @@ func NewInvitationRepo(db *sql.DB) interfaces.InvitationRepository {
 
 // CreateInvitation inserts a new invitation into the database and returns the created invitation ID.
 func (r *invitationRepo) CreateInvitation(ctx context.Context, invitation *entities.Invitation) (uuid.UUID, error) {
-	query := `INSERT INTO invitations (inviting_user_id, invited_user_id, slot_id,game_id) VALUES ($1, $2, $3, $4) RETURNING invitation_id`
+	//query := `INSERT INTO invitations (inviting_user_id, invited_user_id, slot_id,game_id) VALUES ($1, $2, $3, $4) RETURNING invitation_id`
+
+	query := (&db.InsertQueryBuilder{
+		Table:       "invitations",
+		Columns:     "inviting_user_id, invited_user_id, slot_id,game_id",
+		ReturnValue: "invitation_id",
+	}).Build()
+
 	var id uuid.UUID
 	err := r.db.QueryRowContext(ctx, query, invitation.InvitingUserID, invitation.InvitedUserID, invitation.SlotID, invitation.GameID).Scan(&id)
 	if err != nil {
@@ -33,7 +41,13 @@ func (r *invitationRepo) CreateInvitation(ctx context.Context, invitation *entit
 
 // DeleteInvitationByID removes an invitation from the database by its ID.
 func (r *invitationRepo) DeleteInvitationByID(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM invitations WHERE invitation_id = $1`
+	//query := `DELETE FROM invitations WHERE invitation_id = $1`
+
+	query := (&db.DeleteQueryBuilder{
+		Table: "invitations",
+		Where: "invitation_id = $1",
+	}).Build()
+
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete invitation: %w", err)
@@ -53,7 +67,14 @@ func (r *invitationRepo) DeleteInvitationByID(ctx context.Context, id uuid.UUID)
 
 // UpdateInvitationStatus updates the status of an invitation by its ID.
 func (r *invitationRepo) UpdateInvitationStatus(ctx context.Context, id uuid.UUID, status string) error {
-	query := `UPDATE invitations SET status = $1 WHERE invitation_id = $2`
+	//query := `UPDATE invitations SET status = $1 WHERE invitation_id = $2`
+
+	query := (&db.UpdateQueryBuilder{
+		Table: "invitations",
+		Set:   "status = $1",
+		Where: "invitation_id = $2",
+	}).Build()
+
 	_, err := r.db.ExecContext(ctx, query, status, id)
 	if err != nil {
 		return fmt.Errorf("failed to update invitation status: %w", err)
@@ -63,7 +84,13 @@ func (r *invitationRepo) UpdateInvitationStatus(ctx context.Context, id uuid.UUI
 
 // FetchInvitationByID retrieves an invitation by its ID.
 func (r *invitationRepo) FetchInvitationByID(ctx context.Context, id uuid.UUID) (*entities.Invitation, error) {
-	query := `SELECT invitation_id, inviting_user_id, invited_user_id,slot_id,game_id, status, created_at FROM invitations WHERE invitation_id = $1`
+	//query := `SELECT invitation_id, inviting_user_id, invited_user_id,slot_id,game_id, status, created_at FROM invitations WHERE invitation_id = $1`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "invitation_id, inviting_user_id, invited_user_id, slot_id,game_id, status, created_at",
+		From:    "invitations",
+		Where:   "invitation_id = $1",
+	}).Build()
 	row := r.db.QueryRowContext(ctx, query, id)
 
 	var invitation entities.Invitation
@@ -80,7 +107,13 @@ func (r *invitationRepo) FetchInvitationByID(ctx context.Context, id uuid.UUID) 
 
 // FetchUserInvitations retrieves all invitations sent to or from a specific user.
 func (r *invitationRepo) FetchUserInvitations(ctx context.Context, userID uuid.UUID) ([]entities.Invitation, error) {
-	query := `SELECT invitation_id, inviting_user_id, invited_user_id,game_id, status, created_at FROM invitations WHERE inviting_user_id = $1 OR invited_user_id = $2`
+	//query := `SELECT invitation_id, inviting_user_id, invited_user_id,game_id, status, created_at FROM invitations WHERE inviting_user_id = $1 OR invited_user_id = $2`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "invitation_id, inviting_user_id, invited_user_id,game_id, status, created_at",
+		From:    "invitations",
+		Where:   "inviting_user_id = $1 OR invited_user_id = $2",
+	}).Build()
 	rows, err := r.db.QueryContext(ctx, query, userID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch user invitations: %w", err)
@@ -105,33 +138,52 @@ func (r *invitationRepo) FetchUserInvitations(ctx context.Context, userID uuid.U
 
 // FetchUserPendingInvitations retrieves all the pending invitations of the user
 func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error) {
-	query := `
-		SELECT
-		   i.invitation_id,
-		   s.slot_id,
-		   g.game_id,
-		   g.game_name,
-		   s.slot_date,
-		   s.start_time,
-		   s.end_time,
-		   ARRAY_AGG(u.username) AS booked_users,
-		   inviter.username AS invited_by_username
-		FROM
-		   invitations i
-		   JOIN slots s ON i.slot_id = s.slot_id
-		   JOIN games g ON s.game_id = g.game_id
-		   LEFT JOIN bookings b ON s.slot_id = b.slot_id
-		   LEFT JOIN users u ON b.user_id = u.user_id
-		   JOIN users inviter ON i.inviting_user_id = inviter.user_id
-		WHERE
-		   i.invited_user_id = $1
-		   AND i.status = 'pending'
-		   AND s.start_time > NOW()  
-		GROUP BY
-		   i.invitation_id, s.slot_id, g.game_id, g.game_name, s.slot_date, s.start_time, s.end_time, inviter.username
-		ORDER BY
-		   s.start_time;
-	`
+
+	//query := `
+	//    SELECT
+	//        i.invitation_id,
+	//        s.slot_id,
+	//        g.game_id,
+	//        g.game_name,
+	//        s.slot_date,
+	//        s.start_time,
+	//        s.end_time,
+	//        COALESCE(ARRAY_AGG(u.username) FILTER (WHERE u.username IS NOT NULL), '{}') AS booked_users,
+	//        inviter.username AS invited_by_username
+	//    FROM
+	//        invitations i
+	//        JOIN slots s ON i.slot_id = s.slot_id
+	//        JOIN games g ON s.game_id = g.game_id
+	//        LEFT JOIN bookings b ON s.slot_id = b.slot_id
+	//        LEFT JOIN users u ON b.user_id = u.user_id
+	//        JOIN users inviter ON i.inviting_user_id = inviter.user_id
+	//    WHERE
+	//        i.invited_user_id = $1
+	//        AND i.status = 'pending'
+	//        AND s.start_time > CURRENT_TIMESTAMP
+	//    GROUP BY
+	//        i.invitation_id, s.slot_id, g.game_id, g.game_name, s.slot_date, s.start_time, s.end_time, inviter.username
+	//    ORDER BY
+	//        s.start_time, i.invitation_id;
+	//`
+	query := (&db.SelectQueryBuilder{
+		Columns: "i.invitation_id, " +
+			"s.slot_id, g.game_id, " +
+			"g.game_name, s.slot_date, " +
+			"s.start_time, " +
+			"s.end_time, " +
+			"COALESCE(ARRAY_AGG(u.username) FILTER (WHERE u.username IS NOT NULL), '{}') AS booked_users, " +
+			"inviter.username AS invited_by_username",
+		From: "invitations i " +
+			"JOIN slots s ON i.slot_id = s.slot_id " +
+			"JOIN games g ON s.game_id = g.game_id " +
+			"LEFT JOIN bookings b ON s.slot_id = b.slot_id " +
+			"LEFT JOIN users u ON b.user_id = u.user_id " +
+			"JOIN users inviter ON i.inviting_user_id = inviter.user_id",
+		Where:   "i.invited_user_id = $1 AND i.status = 'pending' AND s.start_time > CURRENT_TIMESTAMP",
+		GroupBy: "i.invitation_id, s.slot_id, g.game_id, g.game_name, s.slot_date, s.start_time, s.end_time, inviter.username",
+		OrderBy: "s.start_time, i.invitation_id",
+	}).Build()
 
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
@@ -165,7 +217,7 @@ func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration errs: %w", err)
+		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
 
 	return invitations, nil
@@ -173,11 +225,17 @@ func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID
 
 // FetchInvitationByUserAndSlot retrieves an invitation based on user and slot id
 func (r *invitationRepo) FetchInvitationByUserAndSlot(ctx context.Context, invitingUserID uuid.UUID, invitedUserID uuid.UUID, slotID uuid.UUID) (*entities.Invitation, error) {
-	query := `
-		SELECT invitation_id, inviting_user_id, invited_user_id, slot_id,game_id
-		FROM invitations
-		WHERE inviting_user_id = $1 AND invited_user_id = $2 AND slot_id = $3
-	`
+	//query := `
+	//	SELECT invitation_id, inviting_user_id, invited_user_id, slot_id,game_id
+	//	FROM invitations
+	//	WHERE inviting_user_id = $1 AND invited_user_id = $2 AND slot_id = $3
+	//`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "invitation_id, inviting_user_id, invited_user_id, slot_id,game_id",
+		From:    "invitations",
+		Where:   "inviting_user_id = $1 AND invited_user_id = $2 AND slot_id = $3",
+	}).Build()
 
 	row := r.db.QueryRowContext(ctx, query, invitingUserID, invitedUserID, slotID)
 

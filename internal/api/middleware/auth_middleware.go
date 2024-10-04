@@ -7,6 +7,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"net/http"
 	"project2/internal/config"
+	"project2/pkg/errs"
 	"project2/pkg/logger"
 	"project2/pkg/utils"
 	"strings"
@@ -29,7 +30,8 @@ func JwtAuthMiddleware(next http.Handler) http.Handler {
 		if authHeader == "" {
 			logger.Logger.Warnw("Missing Authorization header", "method", r.Method, "url", r.URL.String(), "time", time.Now())
 			w.Header().Set("Content-Type", "application/json")
-			unauthorized(w, "1001", "Missing Authorization header") // Code 1001 for missing auth header
+			//unauthorized(w, "1001", "Missing Authorization header") // Code 1001 for missing auth header
+			errs.UnauthorizedError("1001", "Authorization header is missing. Please provide a valid token in the Authorization header.").ToJson2(w)
 			return
 		}
 
@@ -38,7 +40,8 @@ func JwtAuthMiddleware(next http.Handler) http.Handler {
 		if tokenString == "" {
 			logger.Logger.Warnw("Missing token in Authorization header", "method", r.Method, "url", r.URL.String(), "time", time.Now())
 			w.Header().Set("Content-Type", "application/json")
-			unauthorized(w, "1002", "Missing token in Authorization header") // Code 1002 for missing token
+			//unauthorized(w, "1002", "Missing token in Authorization header") // Code 1002 for missing token
+			errs.UnauthorizedError("1002", "Bearer token is missing. Ensure your request contains a valid Bearer token.").ToJson2(w)
 			return
 		}
 
@@ -56,7 +59,8 @@ func JwtAuthMiddleware(next http.Handler) http.Handler {
 		if err != nil || !token.Valid {
 			logger.Logger.Errorw("Invalid token", "error", err, "method", r.Method, "url", r.URL.String(), "time", time.Now())
 			w.Header().Set("Content-Type", "application/json")
-			unauthorized(w, "1003", "Invalid or expired token") // Code 1003 for invalid or expired token
+			//unauthorized(w, "1003", "Invalid or expired token") // Code 1003 for invalid or expired token
+			errs.UnauthorizedError("1003", "Your token is invalid or expired. Please log in again to obtain a new token.").ToJson2(w)
 			return
 		}
 
@@ -65,7 +69,8 @@ func JwtAuthMiddleware(next http.Handler) http.Handler {
 		if !ok || !token.Valid {
 			logger.Logger.Warnw("Invalid token claims", "method", r.Method, "url", r.URL.String(), "time", time.Now())
 			w.Header().Set("Content-Type", "application/json")
-			unauthorized(w, "1004", "Invalid Token") // Code 1004 for invalid token claims
+			//unauthorized(w, "1004", "Invalid Token") // Code 1004 for invalid token claims
+			errs.UnauthorizedError("1004", "Invalid token: Claims validation failed. Your token contains invalid information.").ToJson2(w)
 			return
 		}
 
@@ -74,7 +79,8 @@ func JwtAuthMiddleware(next http.Handler) http.Handler {
 		if !ok {
 			logger.Logger.Warnw("Invalid Token: Missing userId", "method", r.Method, "url", r.URL.String(), "time", time.Now())
 			w.Header().Set("Content-Type", "application/json")
-			unauthorized(w, "1005", "Invalid Token: Missing userId") // Code 1005 for missing userId
+			//unauthorized(w, "1005", "Invalid Token: Missing userId") // Code 1005 for missing userId
+			errs.UnauthorizedError("1005", "Invalid token: User ID is missing. Ensure your token contains the necessary claims.").ToJson2(w)
 			return
 		}
 
@@ -83,7 +89,8 @@ func JwtAuthMiddleware(next http.Handler) http.Handler {
 		if !ok {
 			logger.Logger.Warnw("Invalid Token: Missing role", "method", r.Method, "url", r.URL.String(), "time", time.Now())
 			w.Header().Set("Content-Type", "application/json")
-			unauthorized(w, "1006", "Invalid Token: Missing role") // Code 1006 for missing role
+			//unauthorized(w, "1006", "Invalid Token: Missing role") // Code 1006 for missing role
+			errs.UnauthorizedError("1006", "Invalid token: User role is missing. A valid token should specify the user role.").ToJson2(w)
 			return
 		}
 

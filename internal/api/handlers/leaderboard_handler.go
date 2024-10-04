@@ -10,6 +10,7 @@ import (
 	"project2/internal/models"
 	"project2/pkg/errs"
 	"project2/pkg/logger"
+	"project2/pkg/utils"
 	"time"
 )
 
@@ -33,14 +34,14 @@ func (l *LeaderboardHandler) GetGameLeaderboardHandler(w http.ResponseWriter, r 
 	gameId, err := uuid.Parse(gameIdStr)
 	if err != nil {
 		logger.Logger.Errorw("Error parsing game ID", "gameID", gameIdStr, "error", err, "time", time.Now())
-		errs.NewInternalServerError("Couldn't parse game id").ToJSON(w)
+		errs.ValidationError("Couldn't parse game id").ToJson2(w)
 		return
 	}
 
 	leaderboard, err := l.leaderBoardService.GetGameLeaderboard(r.Context(), gameId)
 	if err != nil {
 		logger.Logger.Errorw("Error fetching leaderboard", "gameID", gameIdStr, "error", err, "time", time.Now())
-		errs.NewInternalServerError("Couldn't get leaderboard").ToJSON(w)
+		errs.DBError("Couldn't get leaderboard").ToJson2(w)
 		return
 	}
 
@@ -56,7 +57,9 @@ func (l *LeaderboardHandler) GetGameLeaderboardHandler(w http.ResponseWriter, r 
 			return leaderboard
 		}(),
 	}
-	json.NewEncoder(w).Encode(jsonResponse)
+	if err = utils.JsonEncoder(w, jsonResponse); err != nil {
+		return
+	}
 	logger.Logger.Infow("Successfully fetched game leaderboard", "gameID", gameIdStr, "method", r.Method, "time", time.Now())
 }
 
@@ -64,14 +67,14 @@ func (l *LeaderboardHandler) RecordUserResultHandler(w http.ResponseWriter, r *h
 	userIdStr, ok := r.Context().Value(middleware.UserIdKey).(string)
 	if !ok {
 		logger.Logger.Errorw("Error finding userId in context", "method", r.Method, "time", time.Now())
-		errs.NewUnexpectedError("Could not find the userId").ToJSON(w)
+		errs.InvalidRequestError("Could not find the userId").ToJson2(w)
 		return
 	}
 
 	userId, err := uuid.Parse(userIdStr)
 	if err != nil {
 		logger.Logger.Errorw("Error parsing user ID", "userID", userIdStr, "error", err, "time", time.Now())
-		errs.NewInternalServerError("Couldn't parse user id").ToJSON(w)
+		errs.ValidationError("Couldn't parse user id").ToJson2(w)
 		return
 	}
 
@@ -84,27 +87,27 @@ func (l *LeaderboardHandler) RecordUserResultHandler(w http.ResponseWriter, r *h
 	err = json.NewDecoder(r.Body).Decode(&requestBody)
 	if err != nil {
 		logger.Logger.Errorw("Error decoding request body", "method", r.Method, "error", err, "time", time.Now())
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		errs.InvalidRequestError("User id is wrong").ToJson2(w)
 		return
 	}
 
 	err = validate.Struct(requestBody)
 	if err != nil {
 		logger.Logger.Errorw("Validation error", "method", r.Method, "error", err, "requestBody", requestBody, "time", time.Now())
-		errs.NewBadRequestError("Invalid request body").ToJSON(w)
+		errs.ValidationError("Invalid request body").ToJson2(w)
 		return
 	}
 
 	gameId, err := uuid.Parse(requestBody.GameId)
 	if err != nil {
 		logger.Logger.Errorw("Error parsing game ID", "gameID", requestBody.GameId, "error", err, "time", time.Now())
-		errs.NewInternalServerError("Couldn't parse game id").ToJSON(w)
+		errs.ValidationError("Couldn't parse game id").ToJson2(w)
 		return
 	}
 	bookingId, err := uuid.Parse(requestBody.BookingId)
 	if err != nil {
 		logger.Logger.Errorw("Error parsing booking ID", "bookingID", requestBody.BookingId, "error", err, "time", time.Now())
-		errs.NewInternalServerError("Couldn't parse booking id").ToJSON(w)
+		errs.ValidationError("Couldn't parse booking id").ToJson2(w)
 		return
 	}
 
@@ -113,7 +116,7 @@ func (l *LeaderboardHandler) RecordUserResultHandler(w http.ResponseWriter, r *h
 		err = l.leaderBoardService.AddWinToUser(r.Context(), userId, gameId, bookingId)
 		if err != nil {
 			logger.Logger.Errorw("Error adding win to user", "userID", userIdStr, "gameID", requestBody.GameId, "error", err, "time", time.Now())
-			errs.NewInternalServerError("Couldn't add win to user").ToJSON(w)
+			errs.DBError("Couldn't add win to user").ToJson2(w)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -121,14 +124,16 @@ func (l *LeaderboardHandler) RecordUserResultHandler(w http.ResponseWriter, r *h
 			"code":    http.StatusOK,
 			"message": "Success",
 		}
-		json.NewEncoder(w).Encode(jsonResponse)
+		if err = utils.JsonEncoder(w, jsonResponse); err != nil {
+			return
+		}
 		logger.Logger.Infow("Win added successfully", "userID", userIdStr, "gameID", requestBody.GameId, "method", r.Method, "time", time.Now())
 
 	case "loss":
 		err = l.leaderBoardService.AddLossToUser(r.Context(), userId, gameId, bookingId)
 		if err != nil {
 			logger.Logger.Errorw("Error adding loss to user", "userID", userIdStr, "gameID", requestBody.GameId, "error", err, "time", time.Now())
-			errs.NewInternalServerError("Couldn't add win to user").ToJSON(w)
+			errs.DBError("Couldn't add win to user").ToJson2(w)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -136,10 +141,12 @@ func (l *LeaderboardHandler) RecordUserResultHandler(w http.ResponseWriter, r *h
 			"code":    http.StatusOK,
 			"message": "Success",
 		}
-		json.NewEncoder(w).Encode(jsonResponse)
+		if err = utils.JsonEncoder(w, jsonResponse); err != nil {
+			return
+		}
 		logger.Logger.Infow("Loss added successfully", "userID", userIdStr, "gameID", requestBody.GameId, "method", r.Method, "time", time.Now())
 	default:
-		errs.NewBadRequestError("Invalid or missing result parameter in the URL").ToJSON(w)
+		errs.InvalidRequestError("Invalid or missing result parameter in the URL").ToJson2(w)
 		logger.Logger.Errorw("Invalid or no parameter sent in the URl", "userID", userIdStr, "gameID", requestBody.GameId, "parameter", requestBody.Result, "time", time.Now())
 		return
 	}

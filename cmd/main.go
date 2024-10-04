@@ -14,6 +14,7 @@ import (
 	"project2/internal/app/services"
 	"project2/internal/config"
 	"project2/internal/db"
+	"project2/pkg/logger"
 	"project2/pkg/utils"
 	"syscall"
 )
@@ -72,16 +73,25 @@ func main() {
 	leaderboardHandler := handlers.NewLeaderboardHandler(leaderboardService)
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 
+	// todo: have to automate this process
+	// Insert today's slots
+	err = utils.InsertAllSlots(context.Background(), slotRepo, gameRepo)
+	logger.Logger.Infow("Inserted Slots for all the games for today")
+	if err != nil {
+		log.Fatal("Error inserting slots:", err)
+	}
+
 	// Initialize Router and handlers
 	r := mux.NewRouter()
-	routes.InitialiseUserRouter(r, userHandler)
-	routes.InitialiseBookingRouter(r, bookingHandler)
-	routes.InitialiseAuthRouter(r, authHandler)
-	routes.InitialiseGameRouter(r, gameHandler)
-	routes.InitialiseSlotRouter(r, slotHandler)
-	routes.InitialiseInvitationRouter(r, invitationHandler)
-	routes.InitialiseLeaderboardRouter(r, leaderboardHandler)
-	routes.InitialiseNotificationRouter(r, notificationHandler)
+	apiRouter := r.PathPrefix("/api").Subrouter()
+	routes.InitialiseUserRouter(apiRouter, userHandler)
+	routes.InitialiseBookingRouter(apiRouter, bookingHandler)
+	routes.InitialiseAuthRouter(apiRouter, authHandler)
+	routes.InitialiseGameRouter(apiRouter, gameHandler)
+	routes.InitialiseSlotRouter(apiRouter, slotHandler)
+	routes.InitialiseInvitationRouter(apiRouter, invitationHandler)
+	routes.InitialiseLeaderboardRouter(apiRouter, leaderboardHandler)
+	routes.InitialiseNotificationRouter(apiRouter, notificationHandler)
 
 	// todo: have to automate this process
 	// Insert today's slots

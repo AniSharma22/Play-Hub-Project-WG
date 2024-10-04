@@ -57,7 +57,7 @@ func TestCreateInvitationHandler_Success(t *testing.T) {
 	type response struct {
 		Code    int    `json:"code"`
 		Message string `json:"message"`
-		Data    string `json:"data"`
+		Data    string `json:"invitation_id"`
 	}
 	expectedResponse := response{
 		Code:    200,

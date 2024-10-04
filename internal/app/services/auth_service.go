@@ -27,7 +27,6 @@ func NewAuthService(userRepo repository_interfaces.UserRepository, userService s
 func (a *AuthService) Signup(ctx context.Context, user *entities.User) (*entities.User, error) {
 	// Check if email is already registered
 	exists := a.userService.EmailAlreadyRegistered(ctx, user.Email)
-
 	if exists {
 		return nil, fmt.Errorf("email already registered: %w", errs.ErrEmailExists)
 	}
@@ -38,12 +37,13 @@ func (a *AuthService) Signup(ctx context.Context, user *entities.User) (*entitie
 	// Create user
 	userId, err := a.userRepo.CreateUser(ctx, user)
 	if err != nil {
-		return nil, fmt.Errorf("errs creating user: %w", err)
+		// DB error has occurred while inserting data
+		return nil, fmt.Errorf("error creating user: %w", errs.ErrDbError)
 	}
 
 	user, err = a.userRepo.FetchUserById(ctx, userId)
 	if err != nil {
-		return nil, fmt.Errorf("errs fetching user: %w", err)
+		return nil, fmt.Errorf("error fetching user: %w", errs.ErrDbError)
 	}
 	return user, nil
 }
