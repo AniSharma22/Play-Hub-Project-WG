@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	global_handler "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
@@ -54,7 +55,7 @@ func main() {
 	notificationRepo := repositories.NewNotificationRepo(client)
 
 	// Initialize services
-	gameService := services.NewGameService(gameRepo)
+	gameService := services.NewGameService(gameRepo, slotRepo)
 	slotService := services.NewSlotService(slotRepo)
 	userService := services.NewUserService(userRepo)
 	notificationService := services.NewNotificationService(notificationRepo)
@@ -106,6 +107,7 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 	})
 	fmt.Println("api is running good")
-	log.Fatal(http.ListenAndServe(config.PORT, nil))
+	log.Fatal(http.ListenAndServe(config.PORT, global_handler.CORS(
+		global_handler.AllowedOrigins([]string{"*"}), global_handler.AllowedHeaders([]string{"Content-Type", "Authorization"}), global_handler.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "OPTIONS", "DELETE"}))(r)))
 
 }
