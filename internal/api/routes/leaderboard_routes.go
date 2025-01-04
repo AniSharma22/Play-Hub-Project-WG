@@ -13,4 +13,5 @@ func InitialiseLeaderboardRouter(r *mux.Router, leaderboardHandler *handlers.Lea
 
 	leaderboardRouter.HandleFunc("/games/{gameID}", leaderboardHandler.GetGameLeaderboardHandler)
 	leaderboardRouter.HandleFunc("/record-result", leaderboardHandler.RecordUserResultHandler).Methods(http.MethodPost)
+	leaderboardRouter.HandleFunc("/user-stats", leaderboardHandler.GetUserGameStatsHandler).Methods(http.MethodPost)
 }

@@ -50,9 +50,9 @@ func (l *LeaderboardHandler) GetGameLeaderboardHandler(w http.ResponseWriter, r 
 	jsonResponse := map[string]any{
 		"code":    http.StatusOK,
 		"message": "Success",
-		"leaderboard": func() []models.Leaderboard {
+		"leaderboard": func() []models.LeaderboardDTO {
 			if leaderboard == nil {
-				return []models.Leaderboard{}
+				return []models.LeaderboardDTO{}
 			}
 			return leaderboard
 		}(),
@@ -151,4 +151,54 @@ func (l *LeaderboardHandler) RecordUserResultHandler(w http.ResponseWriter, r *h
 		return
 	}
 
+}
+
+func (l *LeaderboardHandler) GetUserGameStatsHandler(w http.ResponseWriter, r *http.Request) {
+	var requestBody struct {
+		GameId string `json:"game_id" validate:"required"`
+		UserId string `json:"user_id" validate:"required"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&requestBody)
+	if err != nil {
+		logger.Logger.Errorw("Error decoding request body", "method", r.Method, "error", err, "time", time.Now())
+		errs.InvalidRequestError("User id is wrong").ToJson2(w)
+		return
+	}
+
+	err = validate.Struct(requestBody)
+	if err != nil {
+		logger.Logger.Errorw("Validation error", "method", r.Method, "error", err, "requestBody", requestBody, "time", time.Now())
+		errs.ValidationError("Invalid request body").ToJson2(w)
+		return
+	}
+
+	gameId, err := uuid.Parse(requestBody.GameId)
+	if err != nil {
+		logger.Logger.Errorw("Error parsing game ID", "gameID", requestBody.GameId, "error", err, "time", time.Now())
+		errs.ValidationError("Couldn't parse game id").ToJson2(w)
+		return
+	}
+	userId, err := uuid.Parse(requestBody.UserId)
+	if err != nil {
+		logger.Logger.Errorw("Error parsing user ID", "userId", requestBody.UserId, "error", err, "time", time.Now())
+		errs.ValidationError("Couldn't parse booking id").ToJson2(w)
+		return
+	}
+
+	userStats, err := l.leaderBoardService.GetUserGameStats(r.Context(), userId, gameId)
+	if err != nil {
+		logger.Logger.Errorw("Error getting user game stats", "error", err, "time", time.Now())
+		errs.DBError("Couldn't get user game stats").ToJson2(w)
+		return
+	}
+	jsonResponse := map[string]any{
+		"code":    http.StatusOK,
+		"message": "Success",
+		"stats":   userStats,
+	}
+	if err = utils.JsonEncoder(w, jsonResponse); err != nil {
+		return
+	}
+	logger.Logger.Infow("Successfully sent the user stats", "userId", userId, "gameId", gameId, "time", time.Now())
 }

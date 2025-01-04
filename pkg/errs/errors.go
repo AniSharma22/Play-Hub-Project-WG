@@ -18,6 +18,7 @@ var (
 	ErrServiceError         = errors.New("service error")
 	ErrSelfInviteError      = errors.New("can't invite self")
 	ErrSlotFullyBookedError = errors.New("slot is already booked")
+	ErrGameDisabled         = errors.New("game is disabled")
 )
 
 type AppError struct {

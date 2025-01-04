@@ -6,11 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	aws_config "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"log"
 	"math"
+	"mime/multipart"
 	"net/http"
+	"net/url"
 	"project2/internal/config"
 	"project2/internal/domain/entities"
 	repository_interfaces "project2/internal/domain/interfaces/repository"
@@ -56,7 +61,7 @@ func CreateJwtToken(userId uuid.UUID, role string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userId": userId.String(),
 		"role":   role,
-		"exp":    time.Now().Add(time.Minute * 5).Unix(), // Token expiry time (5 minute)
+		"exp":    time.Now().Add(time.Minute * 30).Unix(), // Token expiry time (30 minute)
 	})
 
 	// Sign the token with the secret key
@@ -161,4 +166,59 @@ func JsonEncoder(w http.ResponseWriter, jsonResponse any) error {
 		return err
 	}
 	return nil
+}
+
+func UploadFileToS3(file multipart.File, fileName string) (string, error) {
+	// Load AWS Config (default)
+	cfg, err := aws_config.LoadDefaultConfig(context.TODO(), aws_config.WithRegion(config.REGION))
+	if err != nil {
+		return "", err
+	}
+
+	//Initialise S3 Service
+	svc := s3.NewFromConfig(cfg)
+	bucketName := config.BUCKET
+	key := fmt.Sprintf("uploads/%d_%s", time.Now().Unix(), fileName)
+
+	// Upload the file to S3
+	_, err = svc.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key),
+		Body:   file,
+		ACL:    "public-read",
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// Return the S3 URL of the uploaded file
+	return fmt.Sprintf("https://%s.s3.amazonaws.com/%s", bucketName, key), nil
+}
+
+func DeleteFileFromS3(fileURL string) error {
+	// Load AWS Config (default)
+	cfg, err := aws_config.LoadDefaultConfig(context.TODO(), aws_config.WithRegion(config.REGION))
+	if err != nil {
+		return err
+	}
+
+	// Initialize S3 Service
+	svc := s3.NewFromConfig(cfg)
+
+	// Parse the URL
+	parsedURL, err := url.Parse(fileURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	// Extract the bucket and key
+	bucketName := config.BUCKET
+	key := strings.TrimPrefix(parsedURL.Path, "/") // Remove the leading slash
+
+	// Perform the deletion
+	_, err = svc.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(key),
+	})
+	return err
 }

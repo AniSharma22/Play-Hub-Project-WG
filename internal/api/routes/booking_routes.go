@@ -13,5 +13,5 @@ func InitialiseBookingRouter(r *mux.Router, bookingHandler *handlers.BookingHand
 
 	bookingRouter.HandleFunc("", bookingHandler.CreateBookingHandler).Methods(http.MethodPost)
 	bookingRouter.HandleFunc("", bookingHandler.GetUserBookingsHandler).Methods(http.MethodGet)
-	//bookingRouter.HandleFunc("/pending-results", bookingHandler.GetPendingResultsHandler).Methods(http.MethodGet)
+	bookingRouter.HandleFunc("/{id}", bookingHandler.DeleteUserBookingHandler).Methods(http.MethodDelete)
 }

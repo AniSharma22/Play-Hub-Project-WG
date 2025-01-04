@@ -8,6 +8,7 @@ import (
 	service_interfaces "project2/internal/domain/interfaces/service"
 	"project2/pkg/errs"
 	"project2/pkg/globals"
+	"project2/pkg/logger"
 	"project2/pkg/utils"
 )
 
@@ -66,4 +67,24 @@ func (a *AuthService) Login(ctx context.Context, email string, password []byte) 
 
 	globals.ActiveUser = user.UserID
 	return user, nil
+}
+
+func (a *AuthService) GenerateAndSendOtp(email string) {
+	user, _ := a.userService.GetUserByEmail(context.TODO(), email)
+	if user != nil {
+		otp, _ := utils.GenerateOTP()
+		utils.SaveOTP(email, otp)
+		err := utils.SendOTPEmail(email, otp)
+		if err != nil {
+			fmt.Println(err)
+			logger.Logger.Errorw("Unable to send forgot password mail to the email", "email", email, "err", err)
+			return
+		}
+		fmt.Println("email sent without error")
+	}
+}
+
+func (a *AuthService) UpdateUserPassword(ctx context.Context, email string, password string) error {
+	hashedPassword, _ := utils.GetHashedPassword([]byte(password))
+	return a.userRepo.UpdatePassword(ctx, email, hashedPassword)
 }

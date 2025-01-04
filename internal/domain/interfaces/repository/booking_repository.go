@@ -17,5 +17,6 @@ type BookingRepository interface {
 	UpdateBookingResult(ctx context.Context, bookingId uuid.UUID, result string) error
 	FetchBookingsToUpdateResult(ctx context.Context, userID uuid.UUID) ([]models.Bookings, error)
 	FetchSlotBookedUsers(ctx context.Context, slotId uuid.UUID) ([]string, error)
+	RemoveBookingById(ctx context.Context, bookingID uuid.UUID) error
 	FetchBookingBySlotAndUserId(ctx context.Context, slotId uuid.UUID, userID uuid.UUID) (models.Bookings, error)
 }

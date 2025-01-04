@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"project2/internal/domain/entities"
+	"project2/internal/models"
 	"time"
 )
 
@@ -14,6 +15,7 @@ type SlotRepository interface {
 	FetchSlotsByDate(ctx context.Context, date time.Time) ([]entities.Slot, error)
 	FetchSlotByDateAndTime(ctx context.Context, date time.Time, startTime time.Time) (*entities.Slot, error)
 	FetchSlotsByGameID(ctx context.Context, gameID uuid.UUID) ([]entities.Slot, error)
-	FetchSlotsByGameIDAndDate(ctx context.Context, gameID uuid.UUID, date time.Time) ([]entities.Slot, error)
+	FetchSlotsByGameIDAndDate(ctx context.Context, gameID uuid.UUID, date time.Time) ([]models.SlotDTO, error)
 	UpdateSlotStatus(ctx context.Context, slotID uuid.UUID, isBooked bool) error
+	FetchSlotBookedUsers(ctx context.Context, slotId uuid.UUID) ([]string, error)
 }

@@ -13,5 +13,7 @@ func InitialiseInvitationRouter(r *mux.Router, invitationHandler *handlers.Invit
 
 	invitationRouter.HandleFunc("", invitationHandler.CreateInvitationHandler).Methods(http.MethodPost)
 	invitationRouter.HandleFunc("/{id}", invitationHandler.UpdateInvitationStatusHandler).Methods(http.MethodPatch)
-	invitationRouter.HandleFunc("", invitationHandler.GetPendingInvitationHandler).Methods(http.MethodGet)
+	invitationRouter.HandleFunc("", invitationHandler.GetInvitationHandler).Methods(http.MethodGet)
+	invitationRouter.HandleFunc("/{id}", invitationHandler.DeleteInvitationHandler).Methods(http.MethodDelete)
+	invitationRouter.HandleFunc("/status", invitationHandler.GetPendingInvitationStatusHandler).Methods(http.MethodHead)
 }

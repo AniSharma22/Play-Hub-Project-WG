@@ -19,20 +19,32 @@ type InvitationService struct {
 	invitationRepo repository_interfaces.InvitationRepository
 	bookingService service_interfaces.BookingService
 	slotService    service_interfaces.SlotService
+	gameService    service_interfaces.GameService
 	invitationWG   *sync.WaitGroup
 }
 
-func NewInvitationService(invitationRepo repository_interfaces.InvitationRepository, bookingService service_interfaces.BookingService, slotService service_interfaces.SlotService) service_interfaces.InvitationService {
+func NewInvitationService(invitationRepo repository_interfaces.InvitationRepository, bookingService service_interfaces.BookingService, slotService service_interfaces.SlotService, gameService service_interfaces.GameService) service_interfaces.InvitationService {
 	return &InvitationService{
 		invitationRepo: invitationRepo,
 		bookingService: bookingService,
 		slotService:    slotService,
+		gameService:    gameService,
 		invitationWG:   &sync.WaitGroup{},
 	}
 }
 
 // MakeInvitation creates a new invitation.
 func (s *InvitationService) MakeInvitation(ctx context.Context, invitingUserID, invitedUserID uuid.UUID, slotId uuid.UUID, gameID uuid.UUID) (uuid.UUID, error) {
+
+	// Check if the game is disabled
+	game, err := s.gameService.GetGameByID(ctx, gameID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to fetch details of the game: %w", errs.ErrDbError)
+	}
+
+	if !game.IsActive {
+		return uuid.Nil, fmt.Errorf("game is not active: %w", errs.ErrGameDisabled)
+	}
 
 	// Check if the user is trying to invite themselves
 	if invitingUserID == invitedUserID {
@@ -48,6 +60,12 @@ func (s *InvitationService) MakeInvitation(ctx context.Context, invitingUserID, 
 	// An invitation to the same user has been created in the past
 	if existingInvitation != nil {
 		return uuid.Nil, fmt.Errorf("invitation already exists for this slot: %w", errs.ErrAlreadyExists)
+	}
+
+	// check if the invited user already has booked a slot
+	booking, _ := s.bookingService.GetBookingByUserAndSlotID(ctx, invitedUserID, slotId)
+	if booking.GameName != "" {
+		return uuid.Nil, fmt.Errorf("user has already booked in this slot: %w", errs.ErrAlreadyExists)
 	}
 
 	// Check if the slot is already booked
@@ -124,7 +142,7 @@ func (s *InvitationService) AcceptInvitation(ctx context.Context, invitationID u
 	return nil
 }
 
-// RejectInvitation sets the status of an invitation to 'declined'.
+// RejectInvitation deletes the invitation.
 func (s *InvitationService) RejectInvitation(ctx context.Context, invitationID uuid.UUID) error {
 	err := s.invitationRepo.DeleteInvitationByID(ctx, invitationID)
 	if err != nil {
@@ -136,4 +154,14 @@ func (s *InvitationService) RejectInvitation(ctx context.Context, invitationID u
 // GetAllPendingInvitations retrieves all pending invitations for a user.
 func (s *InvitationService) GetAllPendingInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error) {
 	return s.invitationRepo.FetchUserPendingInvitations(ctx, userID)
+}
+
+// GetAllSentInvitations retrieves all pending invitations for a user.
+func (s *InvitationService) GetAllSentInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error) {
+	return s.invitationRepo.FetchUserSentInvitations(ctx, userID)
+}
+
+// GetPendingInvitationStatus returns a bool showing if pending invitations exists for a user.
+func (s *InvitationService) GetPendingInvitationStatus(ctx context.Context, userID uuid.UUID) (bool, error) {
+	return s.invitationRepo.FetchPendingInvitationStatus(ctx, userID)
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"net/http"
 	"project2/internal/api/middleware"
 	service_interfaces "project2/internal/domain/interfaces/service"
@@ -77,6 +78,9 @@ func (b *BookingHandler) CreateBookingHandler(w http.ResponseWriter, r *http.Req
 	err = b.bookingService.MakeBooking(r.Context(), userId, slotId, gameId)
 	if err != nil {
 		switch {
+		case errors.Is(err, errs.ErrGameDisabled):
+			errs.InvalidRequestError("Couldn't create booking as game is disabled").ToJson2(w)
+			logger.Logger.Errorw("Couldn't create bookings as game is disabled ", "method", r.Method, "userId", userId, "slotId", slotId, "error", err, "time", time.Now())
 		case errors.Is(err, errs.ErrDbError):
 			errs.DBError("Couldn't create booking").ToJson2(w)
 			logger.Logger.Errorw("Database error during booking creation", "method", r.Method, "userId", userId, "slotId", slotId, "error", err, "time", time.Now())
@@ -145,7 +149,7 @@ func (b *BookingHandler) GetUserBookingsHandler(w http.ResponseWriter, r *http.R
 			jsonResponse := map[string]any{
 				"code":    http.StatusOK,
 				"message": "Success",
-				"upcoming_bookings": func() []models.Bookings {
+				"bookings": func() []models.Bookings {
 					if bookings == nil {
 						return []models.Bookings{}
 					}
@@ -184,7 +188,7 @@ func (b *BookingHandler) GetUserBookingsHandler(w http.ResponseWriter, r *http.R
 			jsonResponse := map[string]any{
 				"code":    http.StatusOK,
 				"message": "Success",
-				"pending_results": func() []models.Bookings {
+				"bookings": func() []models.Bookings {
 					if bookings == nil {
 						return []models.Bookings{}
 					}
@@ -200,5 +204,54 @@ func (b *BookingHandler) GetUserBookingsHandler(w http.ResponseWriter, r *http.R
 			logger.Logger.Errorw("Error fetching pending results", "method", r.Method, "type", condition, "time", time.Now())
 			return
 		}
+	}
+}
+
+func (b *BookingHandler) DeleteUserBookingHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	bookingIdStr := vars["id"]
+	bookingId, err := uuid.Parse(bookingIdStr)
+	if err != nil {
+		errs.ValidationError("Invalid booking ID format").ToJson2(w)
+		logger.Logger.Errorw("Error parsing booking", "method", r.Method, "game_id", bookingIdStr, "error", err, "time", time.Now())
+		return
+	}
+
+	userIdStr, ok := r.Context().Value(middleware.UserIdKey).(string)
+	if !ok {
+		errs.InvalidRequestError("Could not find the userId").ToJson2(w)
+		logger.Logger.Errorw("UserId not found in request context", "method", r.Method, "time", time.Now())
+		return
+	}
+
+	userId, err := uuid.Parse(userIdStr)
+	if err != nil {
+		errs.ValidationError("Couldn't parse user ID").ToJson2(w)
+		logger.Logger.Errorw("Failed to parse user ID", "method", r.Method, "userId", userIdStr, "error", err, "time", time.Now())
+		return
+	}
+
+	booking, _ := b.bookingService.GetBookingById(r.Context(), bookingId)
+	if booking.UserID != userId {
+		errs.InvalidRequestError("Operation not allowed").ToJson2(w)
+		logger.Logger.Infow("delete booking request denied", "method", r.Method, "userId", userIdStr, "error", err, "time", time.Now())
+		return
+	}
+
+	err = b.bookingService.DeleteBookingById(r.Context(), bookingId)
+	if err != nil {
+		errs.DBError("Couldn't delete booking").ToJson2(w)
+		logger.Logger.Errorw("Db error occurred while deleting the booking", "method", r.Method, "userId", userIdStr, "error", err, "time", time.Now())
+		return
+	}
+
+	// Log success and return response
+	w.Header().Set("Content-Type", "application/json")
+	jsonResponse := map[string]any{
+		"code":    http.StatusOK,
+		"message": "Success",
+	}
+	if err = utils.JsonEncoder(w, jsonResponse); err != nil {
+		return
 	}
 }

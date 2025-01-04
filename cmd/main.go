@@ -61,7 +61,7 @@ func main() {
 	notificationService := services.NewNotificationService(notificationRepo)
 	authService := services.NewAuthService(userRepo, userService)
 	bookingService := services.NewBookingService(bookingRepo, slotService, gameService)
-	invitationService := services.NewInvitationService(invitationRepo, bookingService, slotService)
+	invitationService := services.NewInvitationService(invitationRepo, bookingService, slotService, gameService)
 	leaderboardService := services.NewLeaderboardService(leaderboardRepo, bookingService)
 
 	// Initialize handlers
@@ -108,6 +108,10 @@ func main() {
 	})
 	fmt.Println("api is running good")
 	log.Fatal(http.ListenAndServe(config.PORT, global_handler.CORS(
-		global_handler.AllowedOrigins([]string{"*"}), global_handler.AllowedHeaders([]string{"Content-Type", "Authorization"}), global_handler.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "OPTIONS", "DELETE"}))(r)))
+		global_handler.AllowedOrigins([]string{"*"}),
+		global_handler.AllowedHeaders([]string{"Content-Type", "Authorization"}),
+		global_handler.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "OPTIONS", "DELETE", "HEAD"}),
+		global_handler.ExposedHeaders([]string{"invitation_status"}),
+	)(r)))
 
 }

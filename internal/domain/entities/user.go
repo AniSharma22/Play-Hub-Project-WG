@@ -12,6 +12,7 @@ type User struct {
 	Password     string    `json:"password" db:"password"`
 	MobileNumber string    `json:"mobile_number,omitempty" db:"mobile_number"`
 	Gender       string    `json:"gender" db:"gender"`
+	ImageUrl     string    `json:"image_url" db:"image_url"`
 	Role         string    `json:"role" db:"role"`
 	CreatedAt    time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`

@@ -8,6 +8,7 @@ import (
 type Game struct {
 	GameID     uuid.UUID `json:"game_id" db:"game_id"`
 	GameName   string    `json:"game_name" db:"game_name"`
+	ImageUrl   string    `json:"image_url" db:"image_url"`
 	MinPlayers int       `json:"min_players" db:"min_players"`
 	MaxPlayers int       `json:"max_players" db:"max_players"`
 	Instances  int       `json:"instances" db:"instances"`

@@ -11,4 +11,6 @@ type InvitationService interface {
 	AcceptInvitation(ctx context.Context, invitationID uuid.UUID) error
 	RejectInvitation(ctx context.Context, invitationID uuid.UUID) error
 	GetAllPendingInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error)
+	GetAllSentInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error)
+	GetPendingInvitationStatus(ctx context.Context, userID uuid.UUID) (bool, error)
 }

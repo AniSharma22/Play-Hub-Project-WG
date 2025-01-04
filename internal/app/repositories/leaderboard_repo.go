@@ -22,9 +22,9 @@ func NewLeaderboardRepo(db *sql.DB) interfaces.LeaderboardRepository {
 
 // FetchGameLeaderboard fetches the game leaderboard of a particular game
 // It returns the list based on descending order of score
-func (r *leaderboardRepo) FetchGameLeaderboard(ctx context.Context, gameID uuid.UUID) ([]models.Leaderboard, error) {
+func (r *leaderboardRepo) FetchGameLeaderboard(ctx context.Context, gameID uuid.UUID) ([]models.LeaderboardDTO, error) {
 	//query := `
-	//	SELECT u.username, l.score
+	//	SELECT u.username, l.wins, l.losses, l.score
 	//	FROM leaderboard l
 	//	INNER JOIN users u ON l.user_id = u.user_id
 	//	WHERE l.game_id = $1
@@ -32,7 +32,7 @@ func (r *leaderboardRepo) FetchGameLeaderboard(ctx context.Context, gameID uuid.
 	//`
 
 	query := (&db.SelectQueryBuilder{
-		Columns: "u.username, l.score",
+		Columns: "u.username, l.wins, l.losses, l.score",
 		From: "leaderboard l " +
 			"INNER JOIN users u ON l.user_id = u.user_id",
 		Where:   "l.game_id = $1",
@@ -45,12 +45,13 @@ func (r *leaderboardRepo) FetchGameLeaderboard(ctx context.Context, gameID uuid.
 	}
 	defer rows.Close()
 
-	var leaderboard []models.Leaderboard
+	var leaderboard []models.LeaderboardDTO
 	for rows.Next() {
-		var entry models.Leaderboard
-		if err := rows.Scan(&entry.UserName, &entry.Score); err != nil {
+		var entry models.LeaderboardDTO
+		if err := rows.Scan(&entry.UserName, &entry.Wins, &entry.Losses, &entry.Score); err != nil {
 			return nil, fmt.Errorf("failed to scan leaderboard row: %w", err)
 		}
+		entry.TotalGames = entry.Wins + entry.Losses
 		leaderboard = append(leaderboard, entry)
 	}
 
@@ -83,39 +84,6 @@ func (r *leaderboardRepo) FetchUserGameStats(ctx context.Context, userID, gameID
 	}
 
 	return &stats, nil
-}
-
-// FetchUserOverallStats retrieves a user's overall stats across all games.
-func (r *leaderboardRepo) FetchUserOverallStats(ctx context.Context, userID uuid.UUID) ([]entities.Leaderboard, error) {
-	//query := `SELECT score_id, user_id, game_id, wins, losses, score, created_at FROM leaderboard WHERE user_id = $1 ORDER BY score DESC`
-
-	query := (&db.SelectQueryBuilder{
-		Columns: "score_id, user_id, game_id, wins, losses, score, created_at",
-		From:    "leaderboard",
-		Where:   "user_id = $1",
-		OrderBy: "score DESC",
-	}).Build()
-
-	rows, err := r.db.QueryContext(ctx, query, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch user overall stats: %w", err)
-	}
-	defer rows.Close()
-
-	var stats []entities.Leaderboard
-	for rows.Next() {
-		var entry entities.Leaderboard
-		if err := rows.Scan(&entry.ScoreID, &entry.UserID, &entry.GameID, &entry.Wins, &entry.Losses, &entry.Score, &entry.CreatedAt); err != nil {
-			return nil, fmt.Errorf("failed to scan stats row: %w", err)
-		}
-		stats = append(stats, entry)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("errs occurred while iterating over stats: %w", err)
-	}
-
-	return stats, nil
 }
 
 // UpdateUserGameStats updates a user's stats for a specific game.

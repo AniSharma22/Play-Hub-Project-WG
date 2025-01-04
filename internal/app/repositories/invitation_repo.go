@@ -3,10 +3,10 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 	"project2/internal/db"
 	"project2/internal/domain/entities"
 	interfaces "project2/internal/domain/interfaces/repository"
@@ -138,41 +138,15 @@ func (r *invitationRepo) FetchUserInvitations(ctx context.Context, userID uuid.U
 
 // FetchUserPendingInvitations retrieves all the pending invitations of the user
 func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error) {
-
-	//query := `
-	//    SELECT
-	//        i.invitation_id,
-	//        s.slot_id,
-	//        g.game_id,
-	//        g.game_name,
-	//        s.slot_date,
-	//        s.start_time,
-	//        s.end_time,
-	//        COALESCE(ARRAY_AGG(u.username) FILTER (WHERE u.username IS NOT NULL), '{}') AS booked_users,
-	//        inviter.username AS invited_by_username
-	//    FROM
-	//        invitations i
-	//        JOIN slots s ON i.slot_id = s.slot_id
-	//        JOIN games g ON s.game_id = g.game_id
-	//        LEFT JOIN bookings b ON s.slot_id = b.slot_id
-	//        LEFT JOIN users u ON b.user_id = u.user_id
-	//        JOIN users inviter ON i.inviting_user_id = inviter.user_id
-	//    WHERE
-	//        i.invited_user_id = $1
-	//        AND i.status = 'pending'
-	//        AND s.start_time > CURRENT_TIMESTAMP
-	//    GROUP BY
-	//        i.invitation_id, s.slot_id, g.game_id, g.game_name, s.slot_date, s.start_time, s.end_time, inviter.username
-	//    ORDER BY
-	//        s.start_time, i.invitation_id;
-	//`
 	query := (&db.SelectQueryBuilder{
 		Columns: "i.invitation_id, " +
 			"s.slot_id, g.game_id, " +
-			"g.game_name, s.slot_date, " +
+			"g.game_name, g.image_url, s.slot_date, " +
 			"s.start_time, " +
 			"s.end_time, " +
-			"COALESCE(ARRAY_AGG(u.username) FILTER (WHERE u.username IS NOT NULL), '{}') AS booked_users, " +
+			// Fixed COALESCE with matching types using json_agg instead
+			"COALESCE(json_agg(json_build_object('user_name', u.username, 'user_image', u.image_url)) " +
+			"FILTER (WHERE u.username IS NOT NULL), '[]'::json) AS booked_users, " +
 			"inviter.username AS invited_by_username",
 		From: "invitations i " +
 			"JOIN slots s ON i.slot_id = s.slot_id " +
@@ -180,8 +154,8 @@ func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID
 			"LEFT JOIN bookings b ON s.slot_id = b.slot_id " +
 			"LEFT JOIN users u ON b.user_id = u.user_id " +
 			"JOIN users inviter ON i.inviting_user_id = inviter.user_id",
-		Where:   "i.invited_user_id = $1 AND i.status = 'pending' AND s.start_time > CURRENT_TIMESTAMP",
-		GroupBy: "i.invitation_id, s.slot_id, g.game_id, g.game_name, s.slot_date, s.start_time, s.end_time, inviter.username",
+		Where:   "i.invited_user_id = $1 AND i.status = 'pending' AND s.start_time > CURRENT_TIMESTAMP AND g.is_active = true",
+		GroupBy: "i.invitation_id, s.slot_id, g.game_id, g.game_name, g.image_url, s.slot_date, s.start_time, s.end_time, inviter.username",
 		OrderBy: "s.start_time, i.invitation_id",
 	}).Build()
 
@@ -194,25 +168,103 @@ func (r *invitationRepo) FetchUserPendingInvitations(ctx context.Context, userID
 	var invitations []models.Invitations
 	for rows.Next() {
 		var invitation models.Invitations
-		var bookedUsers []string
+		var bookedUsersJSON []byte // Use []byte to receive the JSON array
 
 		err := rows.Scan(
 			&invitation.InvitationId,
 			&invitation.SlotId,
 			&invitation.GameId,
 			&invitation.GameName,
+			&invitation.ImageUrl,
 			&invitation.Date,
 			&invitation.StartTime,
 			&invitation.EndTime,
-			pq.Array(&bookedUsers),
+			&bookedUsersJSON, // Scan into JSON byte array
 			&invitation.InvitedBy,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan invitation: %w", err)
 		}
 
-		invitation.BookedUsers = bookedUsers
+		// Parse the JSON array into []BasicUser
+		var bookedUsers []models.BasicUser
+		if len(bookedUsersJSON) > 0 {
+			err = json.Unmarshal(bookedUsersJSON, &bookedUsers)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal booked users: %w", err)
+			}
+		}
 
+		invitation.BookedUsers = bookedUsers
+		invitations = append(invitations, invitation)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return invitations, nil
+}
+
+// FetchUserSentInvitations retrieves all the sent invitations of the user
+func (r *invitationRepo) FetchUserSentInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error) {
+	query := (&db.SelectQueryBuilder{
+		Columns: "i.invitation_id, " +
+			"s.slot_id, g.game_id, " +
+			"g.game_name, g.image_url, s.slot_date, " +
+			"s.start_time, " +
+			"s.end_time, " +
+			"COALESCE(json_agg(json_build_object('user_name', u.username, 'user_image', u.image_url)) " +
+			"FILTER (WHERE u.username IS NOT NULL), '[]'::json) AS booked_users, " +
+			"invited_user.username AS invited_username", // Fetch only the invited user's username
+		From: "invitations i " +
+			"JOIN slots s ON i.slot_id = s.slot_id " +
+			"JOIN games g ON s.game_id = g.game_id " +
+			"LEFT JOIN bookings b ON s.slot_id = b.slot_id " +
+			"LEFT JOIN users u ON b.user_id = u.user_id " +
+			"JOIN users invited_user ON i.invited_user_id = invited_user.user_id", // Join for invited user
+		Where:   "i.inviting_user_id = $1 AND i.status = 'pending' AND s.start_time > CURRENT_TIMESTAMP AND g.is_active = true",
+		GroupBy: "i.invitation_id, s.slot_id, g.game_id, g.game_name, g.image_url, s.slot_date, s.start_time, s.end_time, invited_user.username", // Group by username
+		OrderBy: "s.start_time, i.invitation_id",
+	}).Build()
+
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query pending invitations: %w", err)
+	}
+	defer rows.Close()
+
+	var invitations []models.Invitations
+	for rows.Next() {
+		var invitation models.Invitations
+		var bookedUsersJSON []byte // Use []byte to receive the JSON array
+
+		err := rows.Scan(
+			&invitation.InvitationId,
+			&invitation.SlotId,
+			&invitation.GameId,
+			&invitation.GameName,
+			&invitation.ImageUrl,
+			&invitation.Date,
+			&invitation.StartTime,
+			&invitation.EndTime,
+			&bookedUsersJSON, // Scan into JSON byte array
+			&invitation.InvitedBy,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan invitation: %w", err)
+		}
+
+		// Parse the JSON array into []BasicUser
+		var bookedUsers []models.BasicUser
+		if len(bookedUsersJSON) > 0 {
+			err = json.Unmarshal(bookedUsersJSON, &bookedUsers)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal booked users: %w", err)
+			}
+		}
+
+		invitation.BookedUsers = bookedUsers
 		invitations = append(invitations, invitation)
 	}
 
@@ -250,4 +302,35 @@ func (r *invitationRepo) FetchInvitationByUserAndSlot(ctx context.Context, invit
 	}
 
 	return &invitation, nil
+}
+
+// FetchPendingInvitationStatus checks for the existence of pending invitations for a user.
+func (r *invitationRepo) FetchPendingInvitationStatus(ctx context.Context, userID uuid.UUID) (bool, error) {
+
+	// Build the query to check for pending invitations with a slot that starts in the future
+	query := (&db.SelectQueryBuilder{
+		Columns: "i.invitation_id", // We only need the invitation_id to check for existence
+		From:    "invitations i JOIN slots s ON i.slot_id = s.slot_id",
+		Where:   "i.invited_user_id = $1 AND i.status = 'pending' AND s.start_time > CURRENT_TIMESTAMP",
+	}).Build()
+
+	// Execute the query
+	row := r.db.QueryRowContext(ctx, query, userID)
+
+	// Variable to store the result
+	var invitationID uuid.UUID
+
+	// Scan the result into the invitationID field (if any row is returned)
+	err := row.Scan(&invitationID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// If no rows are found, return false
+			return false, nil
+		}
+		// If another error occurs, return false and the error
+		return false, err
+	}
+
+	// If a row is found (invitationID is populated), return true
+	return true, nil
 }

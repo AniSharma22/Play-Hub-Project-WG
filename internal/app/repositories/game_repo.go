@@ -9,6 +9,8 @@ import (
 	"project2/internal/db"
 	"project2/internal/domain/entities"
 	interfaces "project2/internal/domain/interfaces/repository"
+	"project2/pkg/logger"
+	"project2/pkg/utils"
 )
 
 type gameRepo struct {
@@ -24,7 +26,7 @@ func NewGameRepo(db *sql.DB) interfaces.GameRepository {
 // FetchGameByID retrieves a game by its ID.
 func (r *gameRepo) FetchGameByID(ctx context.Context, id uuid.UUID) (*entities.Game, error) {
 	query := (&db.SelectQueryBuilder{
-		Columns: "game_id, game_name, min_players, max_players, instances, is_active, created_at, updated_at",
+		Columns: "game_id, game_name, image_url, min_players, max_players, instances, is_active, created_at, updated_at",
 		From:    "games",
 		Where:   "game_id = $1",
 	}).Build()
@@ -32,7 +34,7 @@ func (r *gameRepo) FetchGameByID(ctx context.Context, id uuid.UUID) (*entities.G
 	row := r.db.QueryRowContext(ctx, query, id)
 
 	var game entities.Game
-	err := row.Scan(&game.GameID, &game.GameName, &game.MinPlayers, &game.MaxPlayers, &game.Instances, &game.IsActive, &game.CreatedAt, &game.UpdatedAt)
+	err := row.Scan(&game.GameID, &game.GameName, &game.ImageUrl, &game.MinPlayers, &game.MaxPlayers, &game.Instances, &game.IsActive, &game.CreatedAt, &game.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil // No game found
@@ -46,7 +48,7 @@ func (r *gameRepo) FetchGameByID(ctx context.Context, id uuid.UUID) (*entities.G
 // FetchAllGames retrieves all games from the database.
 func (r *gameRepo) FetchAllGames(ctx context.Context) ([]entities.Game, error) {
 	query := (&db.SelectQueryBuilder{
-		Columns: "game_id, game_name, min_players, max_players, instances, is_active, created_at, updated_at",
+		Columns: "game_id, game_name, image_url, min_players, max_players, instances, is_active, created_at, updated_at",
 		From:    "games",
 	}).Build()
 
@@ -59,7 +61,37 @@ func (r *gameRepo) FetchAllGames(ctx context.Context) ([]entities.Game, error) {
 	var games []entities.Game
 	for rows.Next() {
 		var game entities.Game
-		if err := rows.Scan(&game.GameID, &game.GameName, &game.MinPlayers, &game.MaxPlayers, &game.Instances, &game.IsActive, &game.CreatedAt, &game.UpdatedAt); err != nil {
+		if err := rows.Scan(&game.GameID, &game.GameName, &game.ImageUrl, &game.MinPlayers, &game.MaxPlayers, &game.Instances, &game.IsActive, &game.CreatedAt, &game.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan game row: %w", err)
+		}
+		games = append(games, game)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("errs occurred while iterating over games: %w", err)
+	}
+
+	return games, nil
+}
+
+// FetchAllActiveGames retrieves all active games from the database.
+func (r *gameRepo) FetchAllActiveGames(ctx context.Context) ([]entities.Game, error) {
+	query := (&db.SelectQueryBuilder{
+		Columns: "game_id, game_name, image_url, min_players, max_players, instances, is_active, created_at, updated_at",
+		From:    "games",
+		Where:   "is_active = true",
+	}).Build()
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch all games: %w", err)
+	}
+	defer rows.Close()
+
+	var games []entities.Game
+	for rows.Next() {
+		var game entities.Game
+		if err := rows.Scan(&game.GameID, &game.GameName, &game.ImageUrl, &game.MinPlayers, &game.MaxPlayers, &game.Instances, &game.IsActive, &game.CreatedAt, &game.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan game row: %w", err)
 		}
 		games = append(games, game)
@@ -75,14 +107,13 @@ func (r *gameRepo) FetchAllGames(ctx context.Context) ([]entities.Game, error) {
 // CreateGame inserts a new game into the database and returns the created game ID.
 func (r *gameRepo) CreateGame(ctx context.Context, game *entities.Game) (uuid.UUID, error) {
 	//query := `INSERT INTO games (game_name, min_players, max_players, instances, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING game_id`
-
 	query := (&db.InsertQueryBuilder{
 		Table:       "games",
-		Columns:     "game_name, min_players, max_players, instances, is_active",
+		Columns:     "game_name, image_url, min_players, max_players, instances, is_active",
 		ReturnValue: "game_id",
 	}).Build()
 	var id uuid.UUID
-	err := r.db.QueryRowContext(ctx, query, game.GameName, game.MinPlayers, game.MaxPlayers, game.Instances, game.IsActive).Scan(&id)
+	err := r.db.QueryRowContext(ctx, query, game.GameName, game.ImageUrl, game.MinPlayers, game.MaxPlayers, game.Instances, game.IsActive).Scan(&id)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create game: %w", err)
 	}
@@ -91,42 +122,48 @@ func (r *gameRepo) CreateGame(ctx context.Context, game *entities.Game) (uuid.UU
 
 // DeleteGame removes a game from the database by its ID.
 func (r *gameRepo) DeleteGame(ctx context.Context, id uuid.UUID) error {
-	//query := `DELETE FROM games WHERE game_id = $1`
-
+	// Build the delete query with RETURNING clause for image_url
 	query := (&db.DeleteQueryBuilder{
-		Table: "games",
-		Where: "game_id = $1",
+		Table:       "games",
+		Where:       "game_id = $1",
+		ReturnValue: "image_url",
 	}).Build()
 
-	result, err := r.db.ExecContext(ctx, query, id)
+	// Variable to store the returned image_url
+	var imageURL string
+
+	// Use QueryRowContext to execute the query and scan the returned image_url
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&imageURL)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("no game found with ID %s", err)
+		}
 		return fmt.Errorf("failed to delete game: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to check rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("no game found with ID %s", id)
-	}
+	// Run a Go routine to delete the image from S3 as well
+	go func() {
+		err := utils.DeleteFileFromS3(imageURL)
+		if err != nil {
+			logger.Logger.Infow("Couldn't delete this image from the Object Store", "URL", imageURL, "Error", err)
+		}
+	}()
 
 	return nil
 }
 
-// UpdateGameStatus updates the status of a game
-func (r *gameRepo) UpdateGameStatus(ctx context.Context, gameID uuid.UUID, status bool) error {
+// UpdateGame updates the details of a game
+func (r *gameRepo) UpdateGame(ctx context.Context, game *entities.Game) error {
 	//query := `UPDATE games SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE game_id = $2`
 
 	query := (&db.UpdateQueryBuilder{
 		Table: "games",
-		Set:   "is_active = $1, updated_at = CURRENT_TIMESTAMP",
-		Where: "game_id = $2",
+		Set:   "game_name = $1, min_players = $2, max_players = $3, instances = $4, is_active = $5, updated_at = CURRENT_TIMESTAMP",
+		Where: "game_id = $6",
 	}).Build()
 
 	// Execute the update query
-	_, err := r.db.ExecContext(ctx, query, status, gameID)
+	_, err := r.db.ExecContext(ctx, query, game.GameName, game.MinPlayers, game.MaxPlayers, game.Instances, game.IsActive, game.GameID)
 	if err != nil {
 		return fmt.Errorf("failed to update game status: %w", err)
 	}

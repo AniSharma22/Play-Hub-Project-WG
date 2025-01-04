@@ -17,7 +17,7 @@ func IsValidEmail(fl validator.FieldLevel) bool {
 // Password must have 1 uppercase, 1 lowercase, 1 special character and minimum 8 length
 func IsValidPassword(fl validator.FieldLevel) bool {
 	password := fl.Field().String()
-	var hasUpper, hasLower, hasSpecial bool
+	var hasUpper, hasLower, hasNumber bool
 
 	if len(password) < 8 {
 		return false
@@ -29,12 +29,12 @@ func IsValidPassword(fl validator.FieldLevel) bool {
 			hasUpper = true
 		case unicode.IsLower(char):
 			hasLower = true
-		case unicode.IsPunct(char) || unicode.IsSymbol(char):
-			hasSpecial = true
+		case unicode.IsDigit(char):
+			hasNumber = true
 		}
 	}
 
-	return hasUpper && hasLower && hasSpecial
+	return hasUpper && hasLower && hasNumber
 }
 
 // checks if length of number is 10 and starts with 6,7,8 or 9

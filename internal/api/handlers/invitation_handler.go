@@ -57,7 +57,6 @@ func (i *InvitationHandler) CreateInvitationHandler(w http.ResponseWriter, r *ht
 		logger.Logger.Errorw("Error decoding request body", "method", r.Method, "error", err, "time", time.Now())
 		return
 	}
-
 	// Validate the request body
 	err = validate.Struct(requestBody)
 	if err != nil {
@@ -104,6 +103,14 @@ func (i *InvitationHandler) CreateInvitationHandler(w http.ResponseWriter, r *ht
 			errs.InvalidRequestError("Cannot invite users to a past slot").ToJson2(w)
 			logger.Logger.Warnw("Slot has passed", "method", r.Method, "error", err, "time", time.Now())
 			return
+		} else if errors.Is(err, errs.ErrDbError) {
+			errs.DBError("Request failed").ToJson2(w)
+			logger.Logger.Warnw("Database error", "method", r.Method, "error", err, "time", time.Now())
+			return
+		} else if errors.Is(err, errs.ErrGameDisabled) {
+			errs.InvalidRequestError("Cannot invite to a disabled game").ToJson2(w)
+			logger.Logger.Warnw("Invitation to a disabled game", "method", r.Method, "error", err, "time", time.Now())
+			return
 		} else {
 			errs.UnexpectedError("An unexpected error occurred while creating the invitation").ToJson2(w)
 			logger.Logger.Errorw("Unexpected error while creating invitation", "method", r.Method, "error", err, "time", time.Now())
@@ -135,7 +142,6 @@ func (i *InvitationHandler) UpdateInvitationStatusHandler(w http.ResponseWriter,
 		logger.Logger.Errorw("Failed to parse invitationId", "invitationId", invitationIdStr, "error", err, "time", time.Now())
 		return
 	}
-
 	action := r.URL.Query().Get("action")
 	switch action {
 	case "accept":
@@ -183,7 +189,7 @@ func (i *InvitationHandler) UpdateInvitationStatusHandler(w http.ResponseWriter,
 	logger.Logger.Infow("Invitation status updated successfully", "invitationId", invitationId, "action", action, "time", time.Now())
 }
 
-func (i *InvitationHandler) GetPendingInvitationHandler(w http.ResponseWriter, r *http.Request) {
+func (i *InvitationHandler) GetInvitationHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Logger.Infow("GetPendingInvitationHandler called", "method", r.Method, "time", time.Now())
 
 	userIdStr, ok := r.Context().Value(middleware.UserIdKey).(string)
@@ -200,10 +206,27 @@ func (i *InvitationHandler) GetPendingInvitationHandler(w http.ResponseWriter, r
 		return
 	}
 
-	invitations, err := i.invitationService.GetAllPendingInvitations(r.Context(), userId)
-	if err != nil {
-		errs.DBError("Couldn't get pending invitations").ToJson2(w)
-		logger.Logger.Errorw("Failed to fetch pending invitations", "userId", userId, "error", err, "time", time.Now())
+	var invitations []models.Invitations
+
+	condition := r.URL.Query().Get("type")
+
+	if condition == "pending" {
+		invitations, err = i.invitationService.GetAllPendingInvitations(r.Context(), userId)
+		if err != nil {
+			errs.DBError("Couldn't get pending invitations").ToJson2(w)
+			logger.Logger.Errorw("Failed to fetch pending invitations", "userId", userId, "error", err, "time", time.Now())
+			return
+		}
+	} else if condition == "sent" {
+		invitations, err = i.invitationService.GetAllSentInvitations(r.Context(), userId)
+		if err != nil {
+			errs.DBError("Couldn't get sent invitations").ToJson2(w)
+			logger.Logger.Errorw("Failed to fetch sent invitations", "userId", userId, "error", err, "time", time.Now())
+			return
+		}
+	} else {
+		errs.InvalidRequestError("Invalid invitation type requested").ToJson2(w)
+		logger.Logger.Errorw("Invalid invitation type requested", "userId", userId, "error", err, "time", time.Now())
 		return
 	}
 
@@ -211,7 +234,7 @@ func (i *InvitationHandler) GetPendingInvitationHandler(w http.ResponseWriter, r
 	jsonResponse := map[string]any{
 		"code":    http.StatusOK,
 		"message": "Success",
-		"pending_invitations": func() []models.Invitations {
+		"invitations": func() []models.Invitations {
 			if invitations == nil {
 				return []models.Invitations{}
 			}
@@ -221,5 +244,68 @@ func (i *InvitationHandler) GetPendingInvitationHandler(w http.ResponseWriter, r
 	if err = utils.JsonEncoder(w, jsonResponse); err != nil {
 		return
 	}
-	logger.Logger.Infow("Pending Invitations sent successfully", "userId", userId, "method", r.Method, "time", time.Now())
+	logger.Logger.Infow("Invitations sent successfully", "userId", userId, "method", r.Method, "time", time.Now())
+}
+
+func (i *InvitationHandler) GetPendingInvitationStatusHandler(w http.ResponseWriter, r *http.Request) {
+
+	// Extract user ID from context
+	userIdStr, ok := r.Context().Value(middleware.UserIdKey).(string)
+	if !ok {
+		errs.UnexpectedError("Could not find the userId").ToJson2(w)
+		logger.Logger.Errorw("User ID not found in context", "method", r.Method, "time", time.Now())
+		return
+	}
+
+	// Parse user ID from string to UUID
+	userId, err := uuid.Parse(userIdStr)
+	if err != nil {
+		errs.ValidationError("Couldn't parse user id").ToJson2(w)
+		logger.Logger.Errorw("Failed to parse userId", "userId", userIdStr, "error", err, "time", time.Now())
+		return
+	}
+
+	// Fetch the pending invitation status
+	invitationsExist, err := i.invitationService.GetPendingInvitationStatus(r.Context(), userId)
+	if err != nil {
+		logger.Logger.Errorw("Error occurred while fetching pending invitation status", "userId", userIdStr, "error", err, "time", time.Now())
+	}
+
+	// Set invitation status header based on the result
+	if invitationsExist {
+		w.Header().Set("invitation_status", "true")
+	} else {
+		w.Header().Set("invitation_status", "false")
+	}
+
+	// Send a 200 OK response, you can also return the status in the response body if needed
+	w.WriteHeader(http.StatusOK)
+}
+
+func (i *InvitationHandler) DeleteInvitationHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	invitationIdStr := vars["id"]
+	invitationId, err := uuid.Parse(invitationIdStr)
+	if err != nil {
+		errs.ValidationError("Couldn't parse invitation id").ToJson2(w)
+		logger.Logger.Errorw("Failed to parse invitation id", "invitationsId", invitationIdStr, "error", err, "time", time.Now())
+		return
+	}
+
+	err = i.invitationService.RejectInvitation(r.Context(), invitationId)
+	if err != nil {
+		errs.DBError("Couldn't delete invitation").ToJson2(w)
+		logger.Logger.Errorw("Failed to delete Invitation", "invitationsId", invitationIdStr, "error", err, "time", time.Now())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	jsonResponse := map[string]any{
+		"code":    http.StatusOK,
+		"message": "Invitation Deleted Successfully",
+	}
+	if err = utils.JsonEncoder(w, jsonResponse); err != nil {
+		return
+	}
+	logger.Logger.Infow("Invitations deleted successfully", "invitationId", invitationIdStr, "method", r.Method, "time", time.Now())
 }

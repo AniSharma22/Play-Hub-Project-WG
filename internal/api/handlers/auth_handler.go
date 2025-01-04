@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/validator"
+	"math/rand"
 	"net/http"
+	"project2/internal/config"
 	"project2/internal/domain/entities"
 	service_interfaces "project2/internal/domain/interfaces/service"
 	"project2/pkg/errs"
 	"project2/pkg/logger"
 	"project2/pkg/utils"
 	"project2/pkg/validation"
+	"strings"
 	"time"
 )
 
@@ -23,7 +26,7 @@ type AuthHandler struct {
 func init() {
 	// Initialise a new validator
 	validate = validator.New()
-
+	rand.Seed(time.Now().UnixNano())
 	// Register custom validation functions
 	validate.RegisterValidation("isValidEmail", validation.IsValidEmail)
 	validate.RegisterValidation("isValidPassword", validation.IsValidPassword)
@@ -67,10 +70,11 @@ func (a *AuthHandler) SignupHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare user entity
 	userBody := &entities.User{
-		Email:        requestBody.Email,
+		Email:        strings.ToLower(requestBody.Email),
 		Password:     requestBody.Password,
 		Gender:       requestBody.Gender,
 		MobileNumber: requestBody.PhoneNo,
+		ImageUrl:     config.Avatars[rand.Intn(len(config.Avatars))],
 	}
 
 	// Call the signup service
@@ -140,7 +144,7 @@ func (a *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Call the login service
-	user, err := a.authService.Login(r.Context(), requestBody.Email, []byte(requestBody.Password))
+	user, err := a.authService.Login(r.Context(), strings.ToLower(requestBody.Email), []byte(requestBody.Password))
 	if err != nil {
 		if errors.Is(err, errs.ErrInvalidPassword) {
 			//errs.NewUnauthorizedError("Invalid username or password").ToJSON(w)
@@ -196,4 +200,67 @@ func (a *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logger.Logger.Infow("Logout successful", "method", r.Method, "time", time.Now(), "duration", time.Since(startTime))
+}
+
+func (a *AuthHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	var requestBody struct {
+		Email string `json:"email" validate:"required"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&requestBody)
+	if err != nil {
+		logger.Logger.Errorw("Error decoding request body", "method", r.Method, "error", err)
+		errs.InvalidRequestError("Invalid or malformed request body").ToJson2(w)
+		return
+	}
+
+	go a.authService.GenerateAndSendOtp(requestBody.Email)
+
+	jsonResponse := map[string]any{
+		"code":    http.StatusOK,
+		"message": "If this email exists an OTP has been sent",
+	}
+
+	if err = utils.JsonEncoder(w, jsonResponse); err != nil {
+		return
+	}
+}
+
+func (a *AuthHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	var requestBody struct {
+		Email    string `json:"email" validate:"required"`
+		Password string `json:"password" validate:"required"`
+		Otp      string `json:"otp" validate:"required"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&requestBody)
+	if err != nil {
+		logger.Logger.Errorw("Error decoding request body", "method", r.Method, "error", err)
+		errs.InvalidRequestError("Invalid or malformed request body").ToJson2(w)
+		return
+	}
+
+	isValid := utils.ValidateOTP(requestBody.Email, requestBody.Otp)
+	if !isValid {
+		logger.Logger.Errorw("Invalid otp or email", "method", r.Method, "error", err)
+		errs.InvalidRequestError("Invalid Email or Otp").ToJson2(w)
+		return
+	}
+
+	err = a.authService.UpdateUserPassword(r.Context(), requestBody.Email, requestBody.Password)
+	if err != nil {
+		logger.Logger.Errorw("error occurred while resetting the password", "method", r.Method, "error", err)
+		errs.DBError("Some internal error occurred while resetting the password. Please try again").ToJson2(w)
+		return
+	}
+
+	jsonResponse := map[string]any{
+		"code":    http.StatusOK,
+		"message": "Password Reset Successful",
+	}
+
+	if err = utils.JsonEncoder(w, jsonResponse); err != nil {
+		return
+	}
+
 }

@@ -45,14 +45,14 @@ func (r *bookingRepo) CreateBooking(ctx context.Context, booking *entities.Booki
 func (r *bookingRepo) FetchBookingByID(ctx context.Context, id uuid.UUID) (*entities.Booking, error) {
 	//query := `SELECT booking_id, slot_id, user_id,game_id, created_at FROM bookings WHERE booking_id = $1`
 	query := (&db.SelectQueryBuilder{
-		Columns: "booking_id, slot_id, user_id,game_id, created_at",
+		Columns: "booking_id, slot_id, user_id,game_id, result, created_at",
 		From:    "bookings",
 		Where:   "booking_id = $1",
 	}).Build()
 	row := r.db.QueryRowContext(ctx, query, id)
 
 	var booking entities.Booking
-	err := row.Scan(&booking.BookingID, &booking.SlotID, &booking.UserID, &booking.GameID, &booking.CreatedAt)
+	err := row.Scan(&booking.BookingID, &booking.SlotID, &booking.UserID, &booking.GameID, &booking.Result, &booking.CreatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil // No booking found
@@ -181,11 +181,11 @@ func (r *bookingRepo) FetchUpcomingBookingsByUserID(ctx context.Context, userID 
 	//`
 
 	query := (&db.SelectQueryBuilder{
-		Columns: "b.booking_id,g.game_id,g.game_name,s.slot_id,s.slot_date AS date,s.start_time AS start_time,s.end_time AS end_time",
+		Columns: "b.booking_id,g.game_id,g.game_name,g.image_url,s.slot_id,s.slot_date AS date,s.start_time AS start_time,s.end_time AS end_time",
 		From: "bookings b " +
 			"JOIN slots s ON b.slot_id = s.slot_id " +
 			"JOIN games g ON s.game_id = g.game_id",
-		Where:   "b.user_id = $1 AND s.start_time > NOW()",
+		Where:   "b.user_id = $1 AND s.start_time > NOW() AND g.is_active = true",
 		OrderBy: "s.start_time ASC",
 	}).Build()
 
@@ -201,7 +201,7 @@ func (r *bookingRepo) FetchUpcomingBookingsByUserID(ctx context.Context, userID 
 		var slotID uuid.UUID
 
 		// Scan the game_id along with other fields
-		err := rows.Scan(&booking.BookingId, &booking.GameId, &booking.GameName, &slotID, &booking.Date, &booking.StartTime, &booking.EndTime)
+		err := rows.Scan(&booking.BookingId, &booking.GameId, &booking.GameName, &booking.ImageUrl, &slotID, &booking.Date, &booking.StartTime, &booking.EndTime)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan booking: %w", err)
 		}
@@ -270,7 +270,7 @@ func (r *bookingRepo) FetchBookingsToUpdateResult(ctx context.Context, userID uu
 	//`
 
 	query := (&db.SelectQueryBuilder{
-		Columns: "b.booking_id, g.game_id, g.game_name, s.slot_id, s.slot_date, s.start_time, s.end_time",
+		Columns: "b.booking_id, g.game_id, g.game_name, g.image_url, s.slot_id, s.slot_date, s.start_time, s.end_time",
 		From: "bookings b " +
 			"JOIN slots s ON b.slot_id = s.slot_id " +
 			"JOIN games g ON s.game_id = g.game_id",
@@ -298,6 +298,7 @@ func (r *bookingRepo) FetchBookingsToUpdateResult(ctx context.Context, userID uu
 			&booking.BookingId,
 			&booking.GameId,
 			&booking.GameName,
+			&booking.ImageUrl,
 			&slotID,
 			&booking.Date,
 			&booking.StartTime,
@@ -388,7 +389,7 @@ func (r *bookingRepo) FetchBookingBySlotAndUserId(ctx context.Context, slotId uu
 	//      AND b.user_id = $2
 	//`
 	query := (&db.SelectQueryBuilder{
-		Columns: "b.booking_id, g.game_id, g.game_name, s.slot_date, s.start_time, s.end_time",
+		Columns: "b.booking_id, g.game_id, g.game_name, g.image_url, s.slot_date, s.start_time, s.end_time",
 		From: "bookings b " +
 			"JOIN slots s ON b.slot_id = s.slot_id " +
 			"JOIN games g ON s.game_id = g.game_id",
@@ -403,6 +404,7 @@ func (r *bookingRepo) FetchBookingBySlotAndUserId(ctx context.Context, slotId uu
 		&booking.BookingId,
 		&booking.GameId,
 		&booking.GameName,
+		&booking.ImageUrl,
 		&booking.Date,
 		&booking.StartTime,
 		&booking.EndTime,
@@ -422,4 +424,30 @@ func (r *bookingRepo) FetchBookingBySlotAndUserId(ctx context.Context, slotId uu
 	booking.BookedUsers = bookedUsers
 
 	return booking, nil
+}
+
+func (r *bookingRepo) RemoveBookingById(ctx context.Context, bookingID uuid.UUID) error {
+	query := (&db.DeleteQueryBuilder{
+		Table: "bookings",
+		Where: "booking_id = $1",
+	}).Build()
+
+	// Use Exec instead of QueryRowContext for DELETE operations
+	result, err := r.db.ExecContext(ctx, query, bookingID)
+	if err != nil {
+		return fmt.Errorf("failed to remove booking: %w", err)
+	}
+
+	// Check how many rows were affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error checking rows affected: %w", err)
+	}
+
+	// If no rows were affected, it means no booking was found
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }

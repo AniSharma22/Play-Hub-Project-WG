@@ -26,11 +26,20 @@ func NewLeaderboardService(leaderBoardRepo repository_interfaces.LeaderboardRepo
 	}
 }
 
-func (s *LeaderboardService) GetGameLeaderboard(ctx context.Context, gameId uuid.UUID) ([]models.Leaderboard, error) {
+func (s *LeaderboardService) GetGameLeaderboard(ctx context.Context, gameId uuid.UUID) ([]models.LeaderboardDTO, error) {
 	return s.leaderBoardRepo.FetchGameLeaderboard(ctx, gameId)
 }
 
 func (s *LeaderboardService) AddWinToUser(ctx context.Context, userId uuid.UUID, gameId uuid.UUID, bookingId uuid.UUID) error {
+	// check if the user has already updated the result of this game
+	booking, err := s.bookingService.GetBookingById(ctx, bookingId)
+	if err != nil {
+		return err
+	}
+	if booking.Result != "pending" {
+		return fmt.Errorf("the result has already been updated")
+	}
+
 	userStats, err := s.leaderBoardRepo.FetchUserGameStats(ctx, userId, gameId)
 	if err != nil {
 		return fmt.Errorf("failed to fetch user stats for game %s: %w", gameId, err)
@@ -63,6 +72,16 @@ func (s *LeaderboardService) AddWinToUser(ctx context.Context, userId uuid.UUID,
 }
 
 func (s *LeaderboardService) AddLossToUser(ctx context.Context, userId uuid.UUID, gameId uuid.UUID, bookingId uuid.UUID) error {
+	// check if the user has already updated the result of this game
+	booking, err := s.bookingService.GetBookingById(ctx, bookingId)
+	if err != nil {
+		return err
+	}
+	fmt.Println(booking.Result)
+	if booking.Result != "pending" {
+		return fmt.Errorf("the result has already been updated")
+	}
+
 	userStats, err := s.leaderBoardRepo.FetchUserGameStats(ctx, userId, gameId)
 	if err != nil {
 		return fmt.Errorf("failed to fetch user stats for game %s: %w", gameId, err)
@@ -91,4 +110,12 @@ func (s *LeaderboardService) AddLossToUser(ctx context.Context, userId uuid.UUID
 		return fmt.Errorf("failed to update booking result for game %s: %w", gameId, err)
 	}
 	return nil
+}
+
+func (s *LeaderboardService) GetUserGameStats(ctx context.Context, userId uuid.UUID, gameId uuid.UUID) (*entities.Leaderboard, error) {
+	gameStats, err := s.leaderBoardRepo.FetchUserGameStats(ctx, userId, gameId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user stats for game %s: %w", gameId, err)
+	}
+	return gameStats, nil
 }

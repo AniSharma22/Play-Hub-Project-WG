@@ -28,6 +28,7 @@ func InitializeTables() {
 		`CREATE TABLE IF NOT EXISTS users (
 			user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			username VARCHAR(255) NOT NULL,
+			image_url VARCHAR(255) NOT NULL,
 			email VARCHAR(255) UNIQUE NOT NULL,
 			password VARCHAR(255) NOT NULL,
 			mobile_number VARCHAR(15) UNIQUE,
@@ -40,6 +41,7 @@ func InitializeTables() {
 		`CREATE TABLE IF NOT EXISTS games (
 			game_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			game_name VARCHAR(255) NOT NULL,
+			image_url VARCHAR(255) NOT NULL,
 			min_players INT,
 			max_players INT,
 			instances INT,	

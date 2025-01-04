@@ -7,6 +7,7 @@ import (
 	"project2/internal/domain/entities"
 	repository_interfaces "project2/internal/domain/interfaces/repository"
 	service_interfaces "project2/internal/domain/interfaces/service"
+	"project2/internal/models"
 	"project2/pkg/errs"
 	"sync"
 	"time"
@@ -25,7 +26,7 @@ func NewSlotService(slotRepo repository_interfaces.SlotRepository) service_inter
 }
 
 // GetCurrentDayGameSlots retrieves all slots for the current day for a specific game.
-func (s *SlotService) GetCurrentDayGameSlots(ctx context.Context, gameID uuid.UUID) ([]entities.Slot, error) {
+func (s *SlotService) GetCurrentDayGameSlots(ctx context.Context, gameID uuid.UUID) ([]models.SlotDTO, error) {
 
 	// Call the repository to fetch slots by game ID and date
 	slots, err := s.slotRepo.FetchSlotsByGameIDAndDate(ctx, gameID, time.Now())

@@ -11,6 +11,9 @@ type SelectQueryBuilder struct {
 	Where   string
 	GroupBy string
 	OrderBy string
+	Limit   string
+	Offset  string
+	Params  []any
 }
 
 type InsertQueryBuilder struct {
@@ -26,8 +29,9 @@ type UpdateQueryBuilder struct {
 }
 
 type DeleteQueryBuilder struct {
-	Table string
-	Where string
+	Table       string
+	Where       string
+	ReturnValue string
 }
 
 func (s *SelectQueryBuilder) Build() string {
@@ -41,9 +45,7 @@ func (s *SelectQueryBuilder) Build() string {
 	}
 
 	// Add FROM clause
-	if s.From != "" {
-		query += " FROM " + s.From
-	}
+	query += " FROM " + s.From
 
 	// Add WHERE clause
 	if s.Where != "" {
@@ -58,6 +60,14 @@ func (s *SelectQueryBuilder) Build() string {
 	// Add ORDER BY clause
 	if s.OrderBy != "" {
 		query += " ORDER BY " + s.OrderBy
+	}
+
+	// Add LIMIT and OFFSET clauses
+	if s.Limit != "" {
+		query += " LIMIT " + s.Limit
+	}
+	if s.Offset != "" {
+		query += " OFFSET " + s.Offset
 	}
 
 	return query
@@ -107,6 +117,11 @@ func (d *DeleteQueryBuilder) Build() string {
 	// Add WHERE clause if specified
 	if d.Where != "" {
 		query += " WHERE " + d.Where
+	}
+
+	// Add return value if specified
+	if d.ReturnValue != "" {
+		query += " RETURNING " + d.ReturnValue
 	}
 
 	return query

@@ -9,6 +9,7 @@ import (
 	"project2/internal/db"
 	"project2/internal/domain/entities"
 	interfaces "project2/internal/domain/interfaces/repository"
+	"project2/internal/models"
 	"time"
 )
 
@@ -181,18 +182,15 @@ func (r *slotRepo) FetchSlotsByGameID(ctx context.Context, gameID uuid.UUID) ([]
 }
 
 // FetchSlotsByGameIDAndDate retrieves all slots for a specific game on a given date.
-func (r *slotRepo) FetchSlotsByGameIDAndDate(ctx context.Context, gameID uuid.UUID, date time.Time) ([]entities.Slot, error) {
-	// Convert the Go date to a string in the format YYYY-MM-DD for PostgresSQL comparison
+func (r *slotRepo) FetchSlotsByGameIDAndDate(ctx context.Context, gameID uuid.UUID, date time.Time) ([]models.SlotDTO, error) {
+	// Convert the Go date to a string in the format YYYY-MM-DD for PostgreSQL comparison
 	dateStr := date.Format("2006-01-02")
-
-	//query := `SELECT slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at
-	//          FROM slots
-	//          WHERE game_id = $1 AND slot_date::date = $2`
 
 	query := (&db.SelectQueryBuilder{
 		Columns: "slot_id, game_id, slot_date, start_time, end_time, is_booked, created_at",
 		From:    "slots",
 		Where:   "game_id = $1 AND slot_date::date = $2",
+		OrderBy: "start_time",
 	}).Build()
 
 	rows, err := r.db.QueryContext(ctx, query, gameID, dateStr)
@@ -201,18 +199,26 @@ func (r *slotRepo) FetchSlotsByGameIDAndDate(ctx context.Context, gameID uuid.UU
 	}
 	defer rows.Close()
 
-	var slots []entities.Slot
+	var slots []models.SlotDTO
 	for rows.Next() {
-		var slot entities.Slot
+		var slot models.SlotDTO
 		err := rows.Scan(&slot.SlotID, &slot.GameID, &slot.Date, &slot.StartTime, &slot.EndTime, &slot.IsBooked, &slot.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan slot: %w", err)
 		}
+
+		// Fetch booked users for each slot
+		bookedUsers, err := r.FetchSlotBookedUsers(ctx, slot.SlotID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch booked users for slot %s: %w", slot.SlotID, err)
+		}
+		slot.BookedUsers = bookedUsers
 		slots = append(slots, slot)
 	}
 
+	// Check for any errors encountered during rows iteration
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration errs: %w", err)
+		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
 
 	return slots, nil
@@ -238,4 +244,48 @@ func (r *slotRepo) UpdateSlotStatus(ctx context.Context, slotID uuid.UUID, isBoo
 	}
 
 	return nil
+}
+
+// FetchSlotBookedUsers returns a slice of usernames of all users who have booked the given slot
+func (r *slotRepo) FetchSlotBookedUsers(ctx context.Context, slotId uuid.UUID) ([]string, error) {
+	// Define the SQL query to fetch usernames
+	//query := `
+	//	SELECT u.username
+	//	FROM bookings b
+	//	INNER JOIN users u ON b.user_id = u.user_id
+	//	WHERE b.slot_id = $1
+	//`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "u.username",
+		From: "bookings b " +
+			"INNER JOIN users u ON b.user_id = u.user_id",
+		Where: "b.slot_id = $1",
+	}).Build()
+
+	// Execute the query
+	rows, err := r.db.QueryContext(ctx, query, slotId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch booked users: %w", err)
+	}
+	defer rows.Close()
+
+	// Slice to hold the usernames
+	var usernames []string
+
+	// Iterate over the rows and append each username to the slice
+	for rows.Next() {
+		var username string
+		if err := rows.Scan(&username); err != nil {
+			return nil, fmt.Errorf("failed to scan username: %w", err)
+		}
+		usernames = append(usernames, username)
+	}
+
+	// Check for any errs that occurred during iteration
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("errs occurred during rows iteration: %w", err)
+	}
+
+	return usernames, nil
 }

@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/gorilla/mux"
+	"net/http"
 	"project2/internal/api/handlers"
 	"project2/internal/api/middleware"
 )
@@ -14,6 +15,9 @@ func InitialiseUserRouter(r *mux.Router, userHandler *handlers.UserHandler) {
 	userRouter.Use(middleware.JwtAuthMiddleware)
 
 	// Routes to handle specific user requests
-	userRouter.HandleFunc("", middleware.AdminMiddleware(userHandler.GetAllUsersHandler))
-	userRouter.HandleFunc("/{id}", userHandler.GetUserProfileHandler)
+	userRouter.HandleFunc("", middleware.AdminMiddleware(userHandler.GetAllUsersHandlerPaginated)).Methods(http.MethodGet)
+	userRouter.HandleFunc("/public", userHandler.GetAllUsersPublicHandler).Methods(http.MethodGet)
+	userRouter.HandleFunc("/{id}", userHandler.GetUserProfileHandler).Methods(http.MethodGet)
+	userRouter.HandleFunc("/{id}", middleware.AdminMiddleware(userHandler.DeleteUserHandler)).Methods(http.MethodDelete)
+	userRouter.HandleFunc("", userHandler.UpdateUserHandler).Methods(http.MethodPut)
 }

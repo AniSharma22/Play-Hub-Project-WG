@@ -3,6 +3,7 @@ package service_interfaces
 import (
 	"context"
 	"github.com/google/uuid"
+	"project2/internal/domain/entities"
 	"project2/internal/models"
 )
 
@@ -13,4 +14,6 @@ type BookingService interface {
 	UpdateBookingResult(ctx context.Context, bookingId uuid.UUID, result string) error
 	GetSlotBookedUsers(ctx context.Context, slotId uuid.UUID) ([]string, error)
 	GetBookingByUserAndSlotID(ctx context.Context, userID uuid.UUID, slotID uuid.UUID) (models.Bookings, error)
+	DeleteBookingById(ctx context.Context, bookingID uuid.UUID) error
+	GetBookingById(ctx context.Context, bookingID uuid.UUID) (*entities.Booking, error)
 }
