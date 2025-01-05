@@ -214,7 +214,7 @@ func (a *AuthHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	go a.authService.GenerateAndSendOtp(requestBody.Email)
+	go a.authService.GenerateAndSendOtp(strings.ToLower(requestBody.Email))
 
 	jsonResponse := map[string]any{
 		"code":    http.StatusOK,
@@ -240,14 +240,14 @@ func (a *AuthHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	isValid := utils.ValidateOTP(requestBody.Email, requestBody.Otp)
+	isValid := utils.ValidateOTP(strings.ToLower(requestBody.Email), requestBody.Otp)
 	if !isValid {
 		logger.Logger.Errorw("Invalid otp or email", "method", r.Method, "error", err)
 		errs.InvalidRequestError("Invalid Email or Otp").ToJson2(w)
 		return
 	}
 
-	err = a.authService.UpdateUserPassword(r.Context(), requestBody.Email, requestBody.Password)
+	err = a.authService.UpdateUserPassword(r.Context(), strings.ToLower(requestBody.Email), requestBody.Password)
 	if err != nil {
 		logger.Logger.Errorw("error occurred while resetting the password", "method", r.Method, "error", err)
 		errs.DBError("Some internal error occurred while resetting the password. Please try again").ToJson2(w)

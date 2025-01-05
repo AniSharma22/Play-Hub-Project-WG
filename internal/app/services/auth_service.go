@@ -80,7 +80,6 @@ func (a *AuthService) GenerateAndSendOtp(email string) {
 			logger.Logger.Errorw("Unable to send forgot password mail to the email", "email", email, "err", err)
 			return
 		}
-		fmt.Println("email sent without error")
 	}
 }
 
