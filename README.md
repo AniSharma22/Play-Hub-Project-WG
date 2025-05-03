@@ -1,6 +1,5 @@
 Frontend Code at : https://github.com/AniSharma22/Play-Hub-Frontend
 
-"Deadline Commit"
 
 PROJECT-2 (PLAY-HUB) CLI-PROJECT
 
