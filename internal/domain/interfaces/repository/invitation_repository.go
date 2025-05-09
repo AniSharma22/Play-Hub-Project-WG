@@ -14,5 +14,7 @@ type InvitationRepository interface {
 	FetchInvitationByID(ctx context.Context, id uuid.UUID) (*entities.Invitation, error)
 	FetchUserInvitations(ctx context.Context, userID uuid.UUID) ([]entities.Invitation, error)
 	FetchUserPendingInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error)
+	FetchUserSentInvitations(ctx context.Context, userID uuid.UUID) ([]models.Invitations, error)
+	FetchPendingInvitationStatus(ctx context.Context, userID uuid.UUID) (bool, error)
 	FetchInvitationByUserAndSlot(ctx context.Context, invitingUserID uuid.UUID, invitedUserID uuid.UUID, slotID uuid.UUID) (*entities.Invitation, error)
 }

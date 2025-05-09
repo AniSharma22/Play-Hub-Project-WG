@@ -8,6 +8,7 @@ import (
 type Booking struct {
 	BookingID uuid.UUID `json:"booking_id" db:"booking_id"`
 	SlotID    uuid.UUID `json:"slot_id" db:"slot_id"`
+	GameID    uuid.UUID `json:"game_id" db:"game_id"`
 	UserID    uuid.UUID `json:"user_id" db:"user_id"`
 	Result    string    `json:"result" db:"result"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`

@@ -2,23 +2,26 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"project2/internal/domain/entities"
 	repository_interfaces "project2/internal/domain/interfaces/repository"
 	service_interfaces "project2/internal/domain/interfaces/service"
+	"project2/pkg/errs"
+	"project2/pkg/utils"
 	"sync"
 )
 
 type GameService struct {
 	gameRepo repository_interfaces.GameRepository
+	slotRepo repository_interfaces.SlotRepository
 	gameWG   *sync.WaitGroup
 }
 
-func NewGameService(gameRepo repository_interfaces.GameRepository) service_interfaces.GameService {
+func NewGameService(gameRepo repository_interfaces.GameRepository, slotRepo repository_interfaces.SlotRepository) service_interfaces.GameService {
 	return &GameService{
 		gameRepo: gameRepo,
+		slotRepo: slotRepo,
 		gameWG:   &sync.WaitGroup{},
 	}
 }
@@ -41,12 +44,24 @@ func (s *GameService) GetAllGames(ctx context.Context) ([]entities.Game, error) 
 	return games, nil
 }
 
+// GetAllActiveGames retrieves all games
+func (s *GameService) GetAllActiveGames(ctx context.Context) ([]entities.Game, error) {
+	games, err := s.gameRepo.FetchAllActiveGames(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all games: %w", err)
+	}
+	return games, nil
+}
+
 // CreateGame creates a new game
 func (s *GameService) CreateGame(ctx context.Context, game *entities.Game) (uuid.UUID, error) {
 	id, err := s.gameRepo.CreateGame(ctx, game)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create game: %w", err)
 	}
+
+	// insert slots for the newly created game
+	go utils.InsertAllSlots(context.TODO(), s.slotRepo, s.gameRepo)
 	return id, nil
 }
 
@@ -59,17 +74,17 @@ func (s *GameService) DeleteGame(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// UpdateGameStatus updates the status of a game (e.g., activate/deactivate)
-func (s *GameService) UpdateGameStatus(ctx context.Context, id uuid.UUID, status bool) error {
-	game, err := s.gameRepo.FetchGameByID(ctx, id)
+// UpdateGame updates the details of a game
+func (s *GameService) UpdateGame(ctx context.Context, game *entities.Game) error {
+	gameTemp, err := s.gameRepo.FetchGameByID(ctx, game.GameID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch game by ID: %w", err)
 	}
-	if game == nil {
-		return errors.New("game not found")
+	if gameTemp == nil {
+		return fmt.Errorf("game not found: %w", errs.ErrGameNotFound)
 	}
 
-	err = s.gameRepo.UpdateGameStatus(ctx, game.GameID, status)
+	err = s.gameRepo.UpdateGame(ctx, game)
 	if err != nil {
 		return fmt.Errorf("failed to update game status: %w", err)
 	}

@@ -199,7 +199,7 @@ func (ui *UI) HandleSelectedSlot(game *entities.Game, slot *entities.Slot) {
 		// Assuming you have a method to find the user by email
 		user, err := ui.userService.GetUserByEmail(context.Background(), email)
 		if err != nil {
-			fmt.Println("❌ User not found or error retrieving user:", err)
+			fmt.Println("❌ User not found or errs retrieving user:", err)
 			return
 		}
 

@@ -66,7 +66,7 @@ func TestInitClient_PingError(t *testing.T) {
 	}()
 
 	// Mock the Ping method
-	mock.ExpectPing().WillReturnError(errors.New("ping error"))
+	mock.ExpectPing().WillReturnError(errors.New("ping errs"))
 
 	// Ensure that InitClient works with the mock
 	_, err = db.PostgresInitClient()
@@ -190,7 +190,7 @@ func TestLoadDBConfig(t *testing.T) {
 
 		dbConfig, err := db.LoadDBConfig()
 		if err != nil {
-			t.Fatalf("Expected no error, got %v", err)
+			t.Fatalf("Expected no errs, got %v", err)
 		}
 
 		if dbConfig.Host != config.Host || dbConfig.Port != config.Port || dbConfig.User != config.User ||
@@ -204,10 +204,10 @@ func TestLoadDBConfig(t *testing.T) {
 
 		_, err := db.LoadDBConfig()
 		if err == nil {
-			t.Fatal("Expected an error, got nil")
+			t.Fatal("Expected an errs, got nil")
 		}
 		if err.Error() != "missing database configuration" {
-			t.Errorf("Unexpected error message: %v", err)
+			t.Errorf("Unexpected errs message: %v", err)
 		}
 	})
 
@@ -216,10 +216,10 @@ func TestLoadDBConfig(t *testing.T) {
 
 		_, err := db.LoadDBConfig()
 		if err == nil {
-			t.Fatal("Expected an error, got nil")
+			t.Fatal("Expected an errs, got nil")
 		}
 		if err.Error() != "missing database configuration" {
-			t.Errorf("Unexpected error message: %v", err)
+			t.Errorf("Unexpected errs message: %v", err)
 		}
 	})
 
@@ -228,10 +228,10 @@ func TestLoadDBConfig(t *testing.T) {
 
 		_, err := db.LoadDBConfig()
 		if err == nil {
-			t.Fatal("Expected an error, got nil")
+			t.Fatal("Expected an errs, got nil")
 		}
 		if err.Error() != "missing database configuration" {
-			t.Errorf("Unexpected error message: %v", err)
+			t.Errorf("Unexpected errs message: %v", err)
 		}
 	})
 
@@ -240,10 +240,10 @@ func TestLoadDBConfig(t *testing.T) {
 
 		_, err := db.LoadDBConfig()
 		if err == nil {
-			t.Fatal("Expected an error, got nil")
+			t.Fatal("Expected an errs, got nil")
 		}
 		if err.Error() != "missing database configuration" {
-			t.Errorf("Unexpected error message: %v", err)
+			t.Errorf("Unexpected errs message: %v", err)
 		}
 	})
 }

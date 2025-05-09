@@ -1,16 +1,21 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
+	global_handler "github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"project2/internal/api/handlers"
+	"project2/internal/api/routes"
 	"project2/internal/app/repositories"
 	"project2/internal/app/services"
+	"project2/internal/config"
 	"project2/internal/db"
-	"project2/internal/ui"
+	"project2/pkg/logger"
 	"project2/pkg/utils"
 	"syscall"
 )
@@ -28,30 +33,6 @@ func main() {
 		}
 	}()
 
-	// Initialize repositories
-	userRepo := repositories.NewUserRepo(client)
-	gameRepo := repositories.NewGameRepo(client)
-	slotRepo := repositories.NewSlotRepo(client)
-	invitationRepo := repositories.NewInvitationRepo(client)
-	bookingRepo := repositories.NewBookingRepo(client)
-	leaderboardRepo := repositories.NewLeaderboardRepo(client)
-	notificationRepo := repositories.NewNotificationRepo(client)
-
-	// Initialize services
-	gameService := services.NewGameService(gameRepo)
-	slotService := services.NewSlotService(slotRepo)
-	userService := services.NewUserService(userRepo)
-	bookingService := services.NewBookingService(bookingRepo, slotService, gameService)
-	invitationService := services.NewInvitationService(invitationRepo, bookingService, slotService)
-	leaderboardService := services.NewLeaderboardService(leaderboardRepo, bookingService)
-	notificationService := services.NewNotificationService(notificationRepo)
-
-	// Insert today's slots
-	err = utils.InsertAllSlots(context.Background(), slotRepo, gameRepo)
-	if err != nil {
-		log.Fatal("Error inserting slots:", err)
-	}
-
 	// Graceful shutdown handling
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -64,7 +45,73 @@ func main() {
 		os.Exit(0)
 	}()
 
-	// Initialize and display the UI
-	appUI := ui.NewUI(userService, gameService, slotService, bookingService, invitationService, leaderboardService, notificationService, bufio.NewReader(os.Stdin))
-	appUI.ShowMainMenu()
+	// Initialize repositories
+	userRepo := repositories.NewUserRepo(client)
+	gameRepo := repositories.NewGameRepo(client)
+	slotRepo := repositories.NewSlotRepo(client)
+	invitationRepo := repositories.NewInvitationRepo(client)
+	bookingRepo := repositories.NewBookingRepo(client)
+	leaderboardRepo := repositories.NewLeaderboardRepo(client)
+	notificationRepo := repositories.NewNotificationRepo(client)
+
+	// Initialize services
+	gameService := services.NewGameService(gameRepo, slotRepo)
+	slotService := services.NewSlotService(slotRepo)
+	userService := services.NewUserService(userRepo)
+	notificationService := services.NewNotificationService(notificationRepo)
+	authService := services.NewAuthService(userRepo, userService)
+	bookingService := services.NewBookingService(bookingRepo, slotService, gameService)
+	invitationService := services.NewInvitationService(invitationRepo, bookingService, slotService, gameService)
+	leaderboardService := services.NewLeaderboardService(leaderboardRepo, bookingService)
+
+	// Initialize handlers
+	authHandler := handlers.NewAuthHandler(authService)
+	userHandler := handlers.NewUserHandler(userService)
+	gameHandler := handlers.NewGameHandler(gameService)
+	bookingHandler := handlers.NewBookingHandler(bookingService)
+	invitationHandler := handlers.NewInvitationHandler(invitationService)
+	slotHandler := handlers.NewSlotHandler(slotService)
+	leaderboardHandler := handlers.NewLeaderboardHandler(leaderboardService)
+	notificationHandler := handlers.NewNotificationHandler(notificationService)
+
+	// todo: have to automate this process
+	// Insert today's slots
+	err = utils.InsertAllSlots(context.Background(), slotRepo, gameRepo)
+	logger.Logger.Infow("Inserted Slots for all the games for today")
+	if err != nil {
+		log.Fatal("Error inserting slots:", err)
+	}
+
+	// Initialize Router and handlers
+	r := mux.NewRouter()
+	apiRouter := r.PathPrefix("/api").Subrouter()
+	routes.InitialiseUserRouter(apiRouter, userHandler)
+	routes.InitialiseBookingRouter(apiRouter, bookingHandler)
+	routes.InitialiseAuthRouter(apiRouter, authHandler)
+	routes.InitialiseGameRouter(apiRouter, gameHandler)
+	routes.InitialiseSlotRouter(apiRouter, slotHandler)
+	routes.InitialiseInvitationRouter(apiRouter, invitationHandler)
+	routes.InitialiseLeaderboardRouter(apiRouter, leaderboardHandler)
+	routes.InitialiseNotificationRouter(apiRouter, notificationHandler)
+
+	// todo: have to automate this process
+	// Insert today's slots
+	err = utils.InsertAllSlots(context.Background(), slotRepo, gameRepo)
+	if err != nil {
+		log.Fatal("Error inserting slots:", err)
+	}
+
+	http.Handle("/", r)
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Healthy"))
+		w.WriteHeader(http.StatusOK)
+	})
+	fmt.Println("api is running good")
+	log.Fatal(http.ListenAndServe(config.PORT, global_handler.CORS(
+		global_handler.AllowedOrigins([]string{"*"}),
+		global_handler.AllowedHeaders([]string{"Content-Type", "Authorization"}),
+		global_handler.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "OPTIONS", "DELETE", "HEAD"}),
+		global_handler.ExposedHeaders([]string{"invitation_status"}),
+	)(r)))
+
 }

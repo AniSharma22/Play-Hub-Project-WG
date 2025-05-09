@@ -8,6 +8,8 @@ servers:
   - url: http://localhost:8080/api
 
 tags:
+  - name : "Auth"
+    description: "Operations related to Authentication and Authorization"
   - name: "User"
     description: "Operations related to users"
   - name: "Game"
@@ -23,12 +25,214 @@ tags:
   - name: "Notification"
     description: "Operations related to notifications"
 
+components:
+  schemas:
+    Leaderboard:
+      type: object
+      properties:
+        user_name:
+          type: string
+          description: "Name of the user"
+        score:
+          type: number
+          format: float
+          description: "Score of the user in the game"
+    Bookings:
+      type: object
+      properties:
+        booking_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for the booking"
+        game_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for the game associated with the booking"
+        game:
+          type: string
+          description: "Name of the game"
+        date:
+          type: string
+          format: date
+          description: "Date of the game slot"
+        start_time:
+          type: string
+          format: date-time
+          description: "Start time of the game slot"
+        end_time:
+          type: string
+          format: date-time
+          description: "End time of the game slot"
+        booked_users:
+          type: array
+          items:
+            type: string
+          description: "List of users who have booked the slot"
+    Invitations:
+      type: object
+      properties:
+        invitation_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for the invitation"
+        slot_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for the slot associated with the invitation"
+        game_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for the game associated with the invitation"
+        game:
+          type: string
+          description: "Name of the game"
+        date:
+          type: string
+          format: date
+          description: "Date of the game slot"
+        start_time:
+          type: string
+          format: date-time
+          description: "Start time of the game slot"
+        end_time:
+          type: string
+          format: date-time
+          description: "End time of the game slot"
+        booked_users:
+          type: array
+          items:
+            type: string
+          description: "List of users who have booked the slot"
+        invited_by:
+          type: string
+          description: "Email or username of the user who sent the invitation"
+    Notification:
+      type: object
+      properties:
+        notification_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for the notification"
+        user_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for the user associated with the notification"
+        message:
+          type: string
+          description: "Notification message content"
+        is_read:
+          type: boolean
+          example: false
+          description: "Indicates whether the notification has been read"
+        created_at:
+          type: string
+          format: date-time
+          description: "Timestamp when the notification was created"
+    Slot:
+      type: object
+      properties:
+        slot_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for the slot"
+        game_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for the game associated with the slot"
+        slot_date:
+          type: string
+          format: date
+          description: "Date of the slot"
+        start_time:
+          type: string
+          format: date-time
+          description: "Start time of the slot"
+        end_time:
+          type: string
+          format: date-time
+          description: "End time of the slot"
+        is_booked:
+          type: boolean
+          description: "Indicates whether the slot is booked or not"
+        created_at:
+          type: string
+          format: date-time
+          description: "Timestamp when the slot was created"
+    User:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        mobile_number:
+          type: string
+          nullable: true
+        gender:
+          type: string
+        role:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Game:
+      type: object
+      properties:
+        game_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for the game"
+        game_name:
+          type: string
+          description: "Name of the game"
+        min_players:
+          type: integer
+          description: "Minimum number of players required to play the game"
+        max_players:
+          type: integer
+          description: "Maximum number of players allowed in the game"
+        instances:
+          type: integer
+          description: "Number of instances available for this game"
+        is_active:
+          type: boolean
+          description: "Indicates whether the game is active or not"
+        created_at:
+          type: string
+          format: date-time
+          description: "Timestamp when the game was created"
+        updated_at:
+          type: string
+          format: date-time
+          description: "Timestamp when the game was last updated"
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    UnauthorizedError:
+      description: "JWT token is missing or invalid"
+    ForbiddenError:
+      description: "Insufficient privileges (e.g., admin required)"
+
+security:
+  - BearerAuth: []
+
 paths:
-  /admin/login:
+  /auth/login:
     post:
-      summary: "Admin Login"
+      summary: "Admin and User Login"
+      security: []
       tags:
-        - "User"
+        - "Auth"
       requestBody:
         required: true
         content:
@@ -38,8 +242,10 @@ paths:
               properties:
                 email:
                   type: string
+                  example: name.surname@watchguard.com
                 password:
                   type: string
+                  example: Dummy@123
       responses:
         "200":
           description: "Login Successful"
@@ -48,20 +254,62 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
+                  code:
+                    type: number
+                    example: 200
+                  role:
+                    type : string
+                    example: User
                   token:
                     type: string
-                    description: "JWT token for authenticated admin"
+                    description: "JWT token for authenticated user"
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6...
+        "400":
+          description: "Bad Request"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Email or password is missing"
+        "404":
+          description: "User not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "User not found"
+        "500":
+          description: "Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "Login failed"
 
-        "401":
-          description: "Unauthorized"
-
-  /signup:
+  /auth/signup:
     post:
       summary: "User Signup"
       tags:
-        - "User"
+        - "Auth"
+      security: []
       requestBody:
         required: true
         content:
@@ -71,112 +319,143 @@ paths:
               properties:
                 email:
                   type: string
+                  example: name.surname@watchguard.com
                 password:
                   type: string
-                phoneNo:
+                  example: Dummy@123
+                phone_no:
                   type: string
+                  example: 8765439020
                 gender:
                   type : string
+                  example: male
       responses:
-        "201":
+        "200":
           description: "User Created"
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
+                  code:
+                    type: number
+                    example: 200
+                  role:
+                    type : string
+                    example: User
                   token:
                     type: string
-                    description: "JWT token for authenticated admin"
-
+                    description: "JWT token for authenticated user"
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6...
         "400":
-          description: "Bad Request"
-
-  /users/login:
-    post:
-      summary: "User Login"
-      tags:
-        - "User"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                password:
-                  type: string
-      responses:
-        "200":
-          description: "Login Successful"
+          description: "Bad Request - Validation error"
           content:
             application/json:
               schema:
                 type: object
                 properties:
+                  code:
+                    type: integer
+                    example: 400
                   message:
                     type: string
-                  token:
+                    example: "Invalid request body"
+        "409":
+          description: "Email or phone number already exists"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
                     type: string
-                    description: "JWT token for authenticated admin"
+                    example: "Email or phone number already exists"
+        "500":
+          description: "Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "Signup failed"
 
-
-        "401":
-          description: "Unauthorized"
-  /logout:
+  /auth/logout:
     post:
       summary: "User Logout"
       tags:
-        - "User"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                password:
-                  type: string
+        - "Auth"
       responses:
         "200":
-          description: "Login Successful"
-        "401":
-          description: "Unauthorized"
+          description: "Logout Successful"
 
-  /users/me:
-    get:
-      summary: "Get Your profile"
-      tags:
-        - "User"
-      responses:
-        "200":
-          description: "User Details"
-        "404":
-          description: "User Not Found"
   /users:
     get:
       summary: "Get All Users"
+      description: Returns a list of all the users (Admin only)
       tags:
         - "User"
+      security:
+        - BearerAuth: []
       responses:
         "200":
-          description: "User Details"
-        "404":
-          description: "User Not Found"
+          description: "List of Users"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  users:
+                    type: array
+                    description: "List of Users"
+                    items:
+                      $ref: '#/components/schemas/User'
 
-  /users/{userID}:
+        "403":
+          description: "Forbidden - Admin Only"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 403
+                  message:
+                    type: string
+                    example: "Unauthorized (requires admin access)"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "Error fetching users"
+
+  /users/{id}:
     get:
-      summary: "Get A Specific user"
+      summary: "Get A Specific User"
+      description: "Returns details of a specific user"
       tags:
         - "User"
       parameters:
-        - name: userID
+        - name: id
           in: path
           required: true
           schema:
@@ -184,24 +463,134 @@ paths:
       responses:
         "200":
           description: "User Details"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  user:
+                    $ref: '#/components/schemas/User'
+        "400":
+          description: "Invalid User id"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid user id"
         "404":
           description: "User Not Found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: "No user found"
+        "500":
+          description: "Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "Error fetching user"
+
 
   /games:
     get:
       summary: "Get All Games"
+      description: "Returns a list of all the available games or a paricular game if game ID is provided as in the path"
       tags:
         - "Game"
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+            example: 10802fac-8695-47dd-9875-7a63acdaf35a
+          description: "game id to fetch a particular game"
       responses:
         "200":
           description: "List of Games"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  games:
+                    type: array
+                    description: "List of Users"
+                    items:
+                      $ref: '#/components/schemas/Game'
+        "400":
+          description: "Invalid game id"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid game id"
+
         "404":
-          description: "No Games Found"
+          description: "Game not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: "Game not found"
+
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "Error fetching games"
 
     post:
-      summary: "Create a Game"
+      summary: "Create a Game (Admin Only)"
       tags:
         - "Game"
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -211,38 +600,79 @@ paths:
               properties:
                 name:
                   type: string
-                maxPlayers:
+                  example: dummy game
+                max_players:
                   type: integer
-                minPlayers:
+                  example: 10
+                min_players:
                   type: integer
+                  example: 4
                 instances:
                   type: integer
-
-      responses:
-        "201":
-          description: "Game Created"
-        "400":
-          description: "Bad Request"
-
-  /games/{id}:
-    get:
-      summary: "Get Game by ID"
-      tags:
-        - "Game"
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+                  example: 1
       responses:
         "200":
-          description: "Game Details"
-        "404":
-          description: "Game Not Found"
+          description: "Game Created"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  game:
+                    $ref: '#/components/schemas/Game'
+                  message:
+                    type: string
+                    example: success
 
+
+        "400":
+          description: "Bad Request - Validaton error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid request body"
+        "403":
+          description: "Forbidden - Admin Only"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 403
+                  message:
+                    type: string
+                    example: "Unauthorized (requires admin access)"
+
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "game creation failed"
+
+
+  /games/{id}:
     put:
-      summary: "Update Game Status"
+      summary: "Update Game (Admin Only)"
       tags:
         - "Game"
       parameters:
@@ -251,31 +681,77 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                maxPlayers:
-                  type: integer
-                minPlayers:
-                  type: integer
-                instances:
-                  type: integer
-                isActive:
-                  type: boolean
+            example: 10802fac-8695-47dd-9875-7a63acdaf35a
       responses:
         "200":
           description: "Game Updated"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  message:
+                    type: string
+                    example: success
+        "400":
+          description: "Invalid game id"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid game id"
+        "403":
+          description: "Forbidden - Admin Only"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 403
+                  message:
+                    type: string
+                    example: "Unauthorized (requires admin access)"
         "404":
           description: "Game Not Found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: "game not found"
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "game updation failed"
+
 
     delete:
-      summary: "Delete a Game"
+      summary: "Delete a Game (Admin Only)"
       tags:
         - "Game"
       parameters:
@@ -284,28 +760,147 @@ paths:
           required: true
           schema:
             type: string
+            example: 10802fac-8695-47dd-9875-7a63acdaf35a
       responses:
-        "204":
+        "200":
           description: "Game Deleted"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  message:
+                    type: string
+                    example: success
+        "400":
+          description: "Invalid game id"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid game id"
+        "403":
+          description: "Forbidden - Admin Only"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 403
+                  message:
+                    type: string
+                    example: "Unauthorized (requires admin access)"
         "404":
           description: "Game Not Found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: "game not found"
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "game deletion failed"
 
-  /slots/games/{gameID}:
+
+
+  /slots/games/{id}:
     get:
       summary: "Get Today's Slots for Game"
+      description: "Returns slots for the current day of a particular game"
       tags:
         - "Slot"
       parameters:
-        - name: gameID
+        - name: id
           in: path
           required: true
           schema:
             type: string
+            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
       responses:
         "200":
           description: "List of Slots"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  message:
+                    type: string
+                    example: Success
+                  slots:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Slot'
+        "400":
+          description: "Invalid game id"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid game id"
+
         "404":
           description: "Slots Not Found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "game not found"
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "failed to fetch slots for the game"
 
   /slots/{id}:
     get:
@@ -321,24 +916,59 @@ paths:
       responses:
         "200":
           description: "Slot Details"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  message:
+                    type: string
+                    example: Success
+                  slot:
+                    $ref: '#/components/schemas/Slot'
+        "400":
+          description: "Invalid slot id"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid slot id"
         "404":
           description: "Slot Not Found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: "Slot not found"
 
-    # patch:
-    #   summary: "Mark slot as booked"
-    #   tags:
-    #     - "Slot"
-    #   parameters:
-    #     - name: id
-    #       in: path
-    #       required: true
-    #       schema:
-    #         type: string
-    #   responses:
-    #     "200":
-    #       description: "Slot Booked"
-    #     "404":
-    #       description: "Slot Not Found"
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "failed to fetch slot details"
 
   /bookings:
     post:
@@ -352,40 +982,119 @@ paths:
             schema:
               type: object
               properties:
-                slotID:
+                slot_id:
                   type: string
+                  example: au79-uwew-23ss-234jf
+                game_id:
+                  type: string
+                  example: ffj3-uwew-23ss-234jf
       responses:
-        "201":
+        "200":
           description: "Booking Created"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: 200
+                  message:
+                    type: string
+                    example: Booking created successfully
+
         "400":
-          description: "Bad Request"
+          description: "Bad Request - Validation error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid request body"
         "500":
           description: "Server Error"
-
-  /bookings/user/{userID}/upcoming:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "failed to create booking"
     get:
-      summary: "Get User's Upcoming Bookings"
+      summary: "Get User's Bookings"
       tags:
         - "Booking"
       parameters:
-        - name: userID
-          in: path
+        - in: query
+          name: type
           required: true
           schema:
             type: string
+            enum: [upcoming, pending-results]
+          description: "Type of bookings to retrieve (upcoming or pending-results)"
       responses:
         "200":
           description: "List of Bookings"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  message:
+                    type: string
+                    example: Success
+                  bookings:
+                    type: array
+                    description: "List of Bookings"
+                    items:
+                      $ref: '#/components/schemas/Bookings'
+        "400":
+          description: "Bad Request"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "invalid query param (type should be upcoming or pending-results)"
         "500":
           description: "Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "failed to fetch bookings"
 
-  /leaderboards/games/{gameID}:
+
+  /leaderboards/games/{id}:
     get:
       summary: "Get Game Leaderboard"
       tags:
         - "Leaderboard"
       parameters:
-        - name: gameID
+        - name: id
           in: path
           required: true
           schema:
@@ -393,10 +1102,138 @@ paths:
       responses:
         "200":
           description: "Leaderboard Details"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  message:
+                    type: string
+                    example: Success
+                  leaderboard:
+                    type: array
+                    description: "List of Users"
+                    items:
+                      $ref: '#/components/schemas/Leaderboard'
+        "400":
+          description: "Invalid game id"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid game id"
+        "404":
+          description: "game not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: "Game not found"
         "500":
           description: "Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "failed to fetch leaderboard details"
 
-  /invitations:
+  /leaderboards/record-result:
+    post:
+      summary:  "Record a game result for the user"
+      tags:
+        - "Leaderboard"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                game_id:
+                  type: string
+                booking_id:
+                  type: string
+                result:
+                  type: string
+                  enum: [win, loss]
+      responses:
+        "200":
+          description: "Result recorded successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  message:
+                    type: string
+                    example: Success
+
+
+        "400":
+          description: "Bad request - Validation error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid request body"
+        "404":
+          description: "game or booking not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: "game or booking not found"
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "failed to record result"
+
+  /invitation:
     post:
       summary: "Create an Invitation"
       tags:
@@ -408,19 +1245,73 @@ paths:
             schema:
               type: object
               properties:
-                invitedUserEmail:
+                invited_user_id:
                   type: string
-                slotID:
+                slot_id:
+                  type: string
+                game_id:
                   type: string
       responses:
-        "201":
+        "200":
           description: "Invitation Created"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  message:
+                    type: string
+                    example: Success
+                  invitation_id:
+                    type: string
+                    example: 3dac1ed1-aa29-4f75-b758-fa1a1732619a
         "400":
-          description: "Bad Request"
+          description: "Bad Request - Invalid body"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid request body"
+        "404":
+          description: "Invited user, slot or game not found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: "Invited user, slot or game not found"
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "failed to create invitation"
+
 
   /invitations/{id}:
     patch:
-      summary: "Update Invitation Status"
+      summary: "Act to Invitation request"
       tags:
         - "Invitation"
       parameters:
@@ -440,12 +1331,93 @@ paths:
       responses:
         "200":
           description: "Invitation Updated Successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  message:
+                    type: string
+                    example: Success
         "400":
-          description: "Invalid Status Value"
+          description: "Invalid id or status Value"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: "Invalid id or status Value"
         "404":
           description: "Invitation Not Found"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: "Invitation Not Found"
+
         "500":
           description: "Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "failed to act to invitation request"
+
+
+  /invitations:
+    get:
+      summary: "Get User pending Invitations"
+      tags:
+        - "Invitation"
+      responses:
+        "200":
+          description: "List of Notifications"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  users:
+                    type: array
+                    description: "List of Users"
+                    items:
+                      $ref: '#/components/schemas/Invitations'
+        "500":
+          description: "Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "failed to fetch pending invitations"
 
 
   /notifications:
@@ -456,5 +1428,39 @@ paths:
       responses:
         "200":
           description: "List of Notifications"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  message:
+                    type: string
+                    example: Success
+                  notifications:
+                    type: array
+                    description: "List of Notifications"
+                    items:
+                      $ref: '#/components/schemas/Notification'
         "500":
           description: "Server Error"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: "failed to fetch unread notifications"
+
+
+
+
+
+
+

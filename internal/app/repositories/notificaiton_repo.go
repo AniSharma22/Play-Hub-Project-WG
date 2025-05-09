@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"project2/internal/db"
 	"project2/internal/domain/entities"
 	interfaces "project2/internal/domain/interfaces/repository"
 )
@@ -20,7 +21,13 @@ func NewNotificationRepo(db *sql.DB) interfaces.NotificationRepository {
 
 // CreateNotification inserts a new notification into the database and returns the created notification ID.
 func (r *notificationRepo) CreateNotification(ctx context.Context, notification *entities.Notification) (uuid.UUID, error) {
-	query := `INSERT INTO notifications (user_id, message, is_read) VALUES ($1, $2, $3) RETURNING notification_id`
+	//query := `INSERT INTO notifications (user_id, message, is_read) VALUES ($1, $2, $3) RETURNING notification_id`
+
+	query := (&db.InsertQueryBuilder{
+		Table:       "notifications",
+		Columns:     "user_id, message, is_read",
+		ReturnValue: "notification_id",
+	}).Build()
 	var id uuid.UUID
 	err := r.db.QueryRowContext(ctx, query, notification.UserID, notification.Message, notification.IsRead).Scan(&id)
 	if err != nil {
@@ -31,7 +38,13 @@ func (r *notificationRepo) CreateNotification(ctx context.Context, notification 
 
 // FetchNotificationByID retrieves a notification by its ID.
 func (r *notificationRepo) FetchNotificationByID(ctx context.Context, id uuid.UUID) (*entities.Notification, error) {
-	query := `SELECT notification_id, user_id, message, is_read, created_at FROM notifications WHERE notification_id = $1`
+	//query := `SELECT notification_id, user_id, message, is_read, created_at FROM notifications WHERE notification_id = $1`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "notification_id, user_id, message, is_read, created_at",
+		From:    "notifications",
+		Where:   "notification_id = $1",
+	}).Build()
 	row := r.db.QueryRowContext(ctx, query, id)
 
 	var notification entities.Notification
@@ -48,7 +61,15 @@ func (r *notificationRepo) FetchNotificationByID(ctx context.Context, id uuid.UU
 
 // FetchUserNotifications retrieves all notifications for a specific user.
 func (r *notificationRepo) FetchUserNotifications(ctx context.Context, userID uuid.UUID) ([]entities.Notification, error) {
-	query := `SELECT notification_id, user_id, message, is_read, created_at FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`
+	//query := `SELECT notification_id, user_id, message, is_read, created_at FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`
+
+	query := (&db.SelectQueryBuilder{
+		Columns: "notification_id, user_id, message, is_read, created_at",
+		From:    "notifications",
+		Where:   "user_id = $1",
+		OrderBy: "created_at DESC",
+	}).Build()
+
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch user notifications: %w", err)
@@ -65,7 +86,7 @@ func (r *notificationRepo) FetchUserNotifications(ctx context.Context, userID uu
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating over notifications: %w", err)
+		return nil, fmt.Errorf("errs occurred while iterating over notifications: %w", err)
 	}
 
 	return notifications, nil
@@ -73,7 +94,14 @@ func (r *notificationRepo) FetchUserNotifications(ctx context.Context, userID uu
 
 // MarkNotificationAsRead marks a notification as read by updating its is_read status.
 func (r *notificationRepo) MarkNotificationAsRead(ctx context.Context, id uuid.UUID) error {
-	query := `UPDATE notifications SET is_read = TRUE WHERE notification_id = $1`
+	//query := `UPDATE notifications SET is_read = TRUE WHERE notification_id = $1`
+
+	query := (&db.UpdateQueryBuilder{
+		Table: "notifications",
+		Set:   "is_read = TRUE",
+		Where: "notification_id = $1",
+	}).Build()
+
 	_, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to mark notification as read: %w", err)
@@ -83,7 +111,13 @@ func (r *notificationRepo) MarkNotificationAsRead(ctx context.Context, id uuid.U
 
 // DeleteNotificationByID deletes a notification from the database by its ID.
 func (r *notificationRepo) DeleteNotificationByID(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM notifications WHERE notification_id = $1`
+	//query := `DELETE FROM notifications WHERE notification_id = $1`
+
+	query := (&db.DeleteQueryBuilder{
+		Table: "notifications",
+		Where: "notification_id = $1",
+	}).Build()
+
 	_, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete notification: %w", err)

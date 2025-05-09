@@ -38,9 +38,9 @@ func TestInvitationService_MakeInvitation(t *testing.T) {
 			expectedError:  false,
 		},
 		{
-			name: "error fetching invitation by user and slot",
+			name: "errs fetching invitation by user and slot",
 			mockSetup: func() {
-				mockInvitationRepo.EXPECT().FetchInvitationByUserAndSlot(ctx, invitingUserID, invitedUserID, slotID).Return(nil, errors.New("error")).Times(1)
+				mockInvitationRepo.EXPECT().FetchInvitationByUserAndSlot(ctx, invitingUserID, invitedUserID, slotID).Return(nil, errors.New("errs")).Times(1)
 			},
 			expectedResult: uuid.Nil,
 			expectedError:  true,
@@ -54,10 +54,10 @@ func TestInvitationService_MakeInvitation(t *testing.T) {
 			expectedError:  true,
 		},
 		{
-			name: "error fetching slot by id",
+			name: "errs fetching slot by id",
 			mockSetup: func() {
 				mockInvitationRepo.EXPECT().FetchInvitationByUserAndSlot(ctx, invitingUserID, invitedUserID, slotID).Return(nil, nil).Times(1)
-				mockSlotService.EXPECT().GetSlotByID(ctx, slotID).Return(nil, errors.New("error")).Times(1)
+				mockSlotService.EXPECT().GetSlotByID(ctx, slotID).Return(nil, errors.New("errs")).Times(1)
 			},
 			expectedResult: uuid.Nil,
 			expectedError:  true,
@@ -81,11 +81,11 @@ func TestInvitationService_MakeInvitation(t *testing.T) {
 
 			if tt.expectedError {
 				if err == nil {
-					t.Errorf("Expected an error, but got none")
+					t.Errorf("Expected an errs, but got none")
 				}
 			} else {
 				if err != nil {
-					t.Errorf("Did not expect an error, but got: %v", err)
+					t.Errorf("Did not expect an errs, but got: %v", err)
 				}
 				if result == uuid.Nil {
 					t.Errorf("Expected a valid invitation ID, but got none")
@@ -165,9 +165,9 @@ func TestInvitationService_RejectInvitation(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name: "error while deleting",
+			name: "errs while deleting",
 			mockSetup: func() {
-				mockInvitationRepo.EXPECT().DeleteInvitationByID(ctx, invitationID).Return(errors.New("delete error"))
+				mockInvitationRepo.EXPECT().DeleteInvitationByID(ctx, invitationID).Return(errors.New("delete errs"))
 			},
 			expectedError: true,
 		},
@@ -181,11 +181,11 @@ func TestInvitationService_RejectInvitation(t *testing.T) {
 
 			if tt.expectedError {
 				if err == nil {
-					t.Errorf("Expected an error, but got none")
+					t.Errorf("Expected an errs, but got none")
 				}
 			} else {
 				if err != nil {
-					t.Errorf("Did not expect an error, but got: %v", err)
+					t.Errorf("Did not expect an errs, but got: %v", err)
 				}
 			}
 		})
@@ -218,9 +218,9 @@ func TestInvitationService_GetAllPendingInvitations(t *testing.T) {
 			expectedError:  false,
 		},
 		{
-			name: "error fetching invitations",
+			name: "errs fetching invitations",
 			mockSetup: func() {
-				mockInvitationRepo.EXPECT().FetchUserPendingInvitations(ctx, userID).Return(nil, errors.New("fetch error"))
+				mockInvitationRepo.EXPECT().FetchUserPendingInvitations(ctx, userID).Return(nil, errors.New("fetch errs"))
 			},
 			expectedOutput: nil,
 			expectedError:  true,

@@ -8,8 +8,7 @@ import (
 )
 
 type LeaderboardRepository interface {
-	FetchGameLeaderboard(ctx context.Context, gameID uuid.UUID) ([]models.Leaderboard, error)
+	FetchGameLeaderboard(ctx context.Context, gameID uuid.UUID) ([]models.LeaderboardDTO, error)
 	FetchUserGameStats(ctx context.Context, userID, gameID uuid.UUID) (*entities.Leaderboard, error)
-	FetchUserOverallStats(ctx context.Context, userID uuid.UUID) ([]entities.Leaderboard, error)
 	UpdateUserGameStats(ctx context.Context, leaderboard *entities.Leaderboard) error
 }

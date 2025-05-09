@@ -1,3 +1,5 @@
 .env
 .idea
 scripts
+*server_logs.json*
+internal/config/config.go
